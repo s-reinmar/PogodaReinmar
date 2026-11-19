@@ -140,6 +140,7 @@ enum class WeatherCondition(val polishLabel: String) {
     RAIN("Deszcz"),
     HEAVY_RAIN("Silny deszcz"),
     FREEZING_RAIN("Marznący deszcz"),
+    HAIL("Grad"),
     SNOW("Opady śniegu"),
     THUNDERSTORM("Burza"),
 }

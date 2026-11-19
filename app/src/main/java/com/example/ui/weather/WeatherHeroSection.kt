@@ -173,7 +173,7 @@ fun WeatherHeroSection(
             WeatherConditionIcon(
                 condition = bundle.resolvedCondition,
                 isDay = bundle.isDaytime,
-                size = 64.dp,
+                size = 82.dp,
                 withHalo = true,
             )
         }

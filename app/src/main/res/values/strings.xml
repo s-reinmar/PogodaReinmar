@@ -50,6 +50,7 @@
     <string name="condition_rain">Deszcz</string>
     <string name="condition_heavy_rain">Silny deszcz</string>
     <string name="condition_freezing_rain">Marznący deszcz</string>
+    <string name="condition_hail">Grad</string>
     <string name="condition_snow">Opady śniegu</string>
     <string name="condition_thunderstorm">Burza</string>
 

@@ -50,6 +50,7 @@
     <string name="condition_rain">Rain</string>
     <string name="condition_heavy_rain">Heavy rain</string>
     <string name="condition_freezing_rain">Freezing rain</string>
+    <string name="condition_hail">Hail</string>
     <string name="condition_snow">Snowfall</string>
     <string name="condition_thunderstorm">Thunderstorm</string>
 

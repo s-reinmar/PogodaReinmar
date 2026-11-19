@@ -1,12 +1,7 @@
 package com.example.ui.weather
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,11 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Air
-import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Umbrella
 import androidx.compose.material.icons.rounded.WaterDrop
@@ -28,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,19 +33,20 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.domain.model.HybridWeatherBundle
 import com.example.domain.util.WeatherCodeMapper
 import com.example.ui.theme.RainCyan
 import com.example.ui.theme.SkyPalette
 import com.example.ui.theme.SunAmber
-import java.util.Locale
 import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -152,14 +145,7 @@ private fun WindBentoTile(
 ) {
     val windKmh = bundle.effectiveWindSpeedKmh
     val windMs = bundle.effectiveWindSpeedMs
-    val directionDeg = bundle.effectiveWindDirectionDeg ?: 0f
-
-    // Meteorological wind direction indicates where the wind blows FROM; arrow points with flow
-    val animatedRotation by animateFloatAsState(
-        targetValue = (directionDeg + 180f) % 360f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "wind_compass_rotation",
-    )
+    val directionDeg = bundle.effectiveWindDirectionDeg
 
     BentoGlassCard(
         palette = palette,
@@ -176,13 +162,14 @@ private fun WindBentoTile(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = windKmh?.let { "${it.roundToInt()} km/h" } ?: "—",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
+                    maxLines = 1,
                 )
                 Spacer(Modifier.height(2.dp))
                 val activeLocale = LocalAppLanguage.current.toLocale()
@@ -195,54 +182,15 @@ private fun WindBentoTile(
                 )
             }
 
-            // Rotating compass dial with graphicsLayer rotationZ
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Canvas(modifier = Modifier.size(48.dp)) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.22f),
-                        style = Stroke(width = 1.5.dp.toPx()),
-                    )
-                    // Cardinal tick marks (N, E, S, W)
-                    for (angle in listOf(0, 90, 180, 270)) {
-                        val rad = Math.toRadians(angle.toDouble())
-                        val outer = size.minDimension / 2f - 2.dp.toPx()
-                        val inner = outer - 4.dp.toPx()
-                        drawLine(
-                            color = if (angle == 0) palette.accent else Color.White.copy(alpha = 0.45f),
-                            start = Offset(
-                                center.x + (sin(rad) * inner).toFloat(),
-                                center.y - (cos(rad) * inner).toFloat(),
-                            ),
-                            end = Offset(
-                                center.x + (sin(rad) * outer).toFloat(),
-                                center.y - (cos(rad) * outer).toFloat(),
-                            ),
-                            strokeWidth = 1.5.dp.toPx(),
-                            cap = StrokeCap.Round,
-                        )
-                    }
-                }
-                Icon(
-                    imageVector = Icons.Rounded.Navigation,
-                    contentDescription = localizedWindDirectionName(bundle.effectiveWindDirectionDeg),
-                    tint = palette.accent,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .graphicsLayer {
-                            rotationZ = animatedRotation
-                        },
-                )
-            }
+            WindDirectionCompassIcon(
+                degrees = directionDeg,
+                contentDescription = localizedWindDirectionName(directionDeg),
+                size = 50.dp,
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "${localizedWindDirectionName(bundle.effectiveWindDirectionDeg)} (${WeatherCodeMapper.windDirectionLabel(bundle.effectiveWindDirectionDeg)})",
+            text = "${localizedWindDirectionName(directionDeg)} (${WeatherCodeMapper.windDirectionLabel(directionDeg)})",
             style = MaterialTheme.typography.bodySmall,
             color = Color.White.copy(alpha = 0.78f),
         )
@@ -270,11 +218,39 @@ private fun PressureBentoTile(
             tint = palette.accent,
         )
         Spacer(Modifier.weight(1f))
-        Text(
-            text = pressure?.let { "${it.roundToInt()} hPa" } ?: "—",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = if (pressure != null) {
+                    buildAnnotatedString {
+                        append("${pressure.roundToInt()}")
+                        withStyle(
+                            SpanStyle(
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.78f),
+                            ),
+                        ) {
+                            append(" hPa")
+                        }
+                    }
+                } else {
+                    buildAnnotatedString { append("—") }
+                },
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            MetricGraphicBadge(
+                drawableRes = R.drawable.ic_metric_pressure,
+                contentDescription = appString(R.string.metric_pressure),
+                size = 46.dp,
+                testTag = "metric_pressure_icon",
+            )
+        }
         Spacer(Modifier.height(8.dp))
         MetricBarIndicator(
             fraction = normalized.toFloat().coerceIn(0f, 1f),
@@ -309,11 +285,25 @@ private fun HumidityBentoTile(
             tint = RainCyan,
         )
         Spacer(Modifier.weight(1f))
-        Text(
-            text = humidity?.let { "${it.roundToInt()}%" } ?: "—",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = humidity?.let { "${it.roundToInt()}%" } ?: "—",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            MetricGraphicBadge(
+                drawableRes = R.drawable.ic_metric_humidity,
+                contentDescription = appString(R.string.metric_humidity),
+                size = 46.dp,
+                testTag = "metric_humidity_icon",
+            )
+        }
         Spacer(Modifier.height(8.dp))
         MetricBarIndicator(
             fraction = ((humidity ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f),
@@ -354,13 +344,39 @@ private fun PrecipitationBentoTile(
         )
         Spacer(Modifier.weight(1f))
         val activeLocale = LocalAppLanguage.current.toLocale()
-        Text(
-            text = precip?.let {
-                String.format(activeLocale, "%.1f mm", it)
-            } ?: "—",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = if (precip != null) {
+                    buildAnnotatedString {
+                        append(String.format(activeLocale, "%.1f", precip))
+                        withStyle(
+                            SpanStyle(
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.78f),
+                            ),
+                        ) {
+                            append(" mm")
+                        }
+                    }
+                } else {
+                    buildAnnotatedString { append("—") }
+                },
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            MetricGraphicBadge(
+                drawableRes = R.drawable.ic_metric_precipitation,
+                contentDescription = appString(R.string.metric_precipitation),
+                size = 46.dp,
+                testTag = "metric_precipitation_icon",
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Text(
             text = localizedPrecipitationDescription(precip),
@@ -383,6 +399,7 @@ private fun UvIndexBentoTile(
     modifier: Modifier = Modifier,
 ) {
     val uv = bundle.openMeteo?.todayUvIndexMax
+    val isHighUv = uv != null && uv >= 6.0
 
     BentoGlassCard(
         palette = palette,
@@ -397,11 +414,31 @@ private fun UvIndexBentoTile(
         )
         Spacer(Modifier.weight(1f))
         val activeLocale = LocalAppLanguage.current.toLocale()
-        Text(
-            text = uv?.let { String.format(activeLocale, "%.1f", it) } ?: "—",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = uv?.let { String.format(activeLocale, "%.1f", it) } ?: "—",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            MetricGraphicBadge(
+                drawableRes = uvIndexDrawableRes(uv),
+                contentDescription = localizedUvRiskDescription(uv),
+                size = 46.dp,
+                containerAlpha = if (isHighUv) 0.16f else 0.24f,
+                borderColor = if (isHighUv) {
+                    SunAmber.copy(alpha = 0.65f)
+                } else {
+                    Color.White.copy(alpha = 0.30f)
+                },
+                testTag = "metric_uv_icon",
+            )
+        }
         Spacer(Modifier.height(8.dp))
         MetricBarIndicator(
             fraction = ((uv ?: 0.0) / 11.0).toFloat().coerceIn(0f, 1f),

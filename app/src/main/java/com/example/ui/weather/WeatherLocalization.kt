@@ -69,6 +69,7 @@ fun localizedConditionLabel(condition: WeatherCondition): String = when (conditi
     WeatherCondition.RAIN -> appString(R.string.condition_rain)
     WeatherCondition.HEAVY_RAIN -> appString(R.string.condition_heavy_rain)
     WeatherCondition.FREEZING_RAIN -> appString(R.string.condition_freezing_rain)
+    WeatherCondition.HAIL -> appString(R.string.condition_hail)
     WeatherCondition.SNOW -> appString(R.string.condition_snow)
     WeatherCondition.THUNDERSTORM -> appString(R.string.condition_thunderstorm)
 }

@@ -138,7 +138,7 @@ private fun HourlyChip(
             WeatherConditionIcon(
                 condition = condition,
                 isDay = item.isDay,
-                size = 26.dp,
+                size = 32.dp,
             )
 
             Text(

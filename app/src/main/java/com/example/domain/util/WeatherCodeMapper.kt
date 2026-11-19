@@ -45,7 +45,8 @@ object WeatherCodeMapper {
         61, 63, 80, 81 -> WeatherCondition.RAIN
         65, 82 -> WeatherCondition.HEAVY_RAIN
         71, 73, 75, 77, 85, 86 -> WeatherCondition.SNOW
-        95, 96, 99 -> WeatherCondition.THUNDERSTORM
+        95 -> WeatherCondition.THUNDERSTORM
+        96, 99 -> WeatherCondition.HAIL
         else -> WeatherCondition.PARTLY_CLOUDY
     }
 

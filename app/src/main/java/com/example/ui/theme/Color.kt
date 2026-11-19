@@ -151,6 +151,7 @@ object SkyPalettes {
                 WeatherCondition.RAIN,
                 WeatherCondition.HEAVY_RAIN,
                 WeatherCondition.THUNDERSTORM,
+                WeatherCondition.HAIL,
                 WeatherCondition.FREEZING_RAIN -> RainStorm
                 else -> CloudyNight
             }
@@ -165,6 +166,7 @@ object SkyPalettes {
             WeatherCondition.RAIN,
             WeatherCondition.HEAVY_RAIN,
             WeatherCondition.FREEZING_RAIN,
+            WeatherCondition.HAIL,
             WeatherCondition.THUNDERSTORM -> RainStorm
             WeatherCondition.SNOW -> SnowAtmosphere
         }

@@ -154,14 +154,14 @@ private fun DailyForecastRow(
 
         // Weather icon + rain probability
         Row(
-            modifier = Modifier.width(74.dp),
+            modifier = Modifier.width(80.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             WeatherConditionIcon(
                 condition = condition,
                 isDay = true,
-                size = 24.dp,
+                size = 28.dp,
             )
             if (item.precipitationProbabilityMaxPct >= 10) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -50,6 +50,7 @@
     <string name="condition_rain">Regen</string>
     <string name="condition_heavy_rain">Starker Regen</string>
     <string name="condition_freezing_rain">Gefrierender Regen</string>
+    <string name="condition_hail">Hagel</string>
     <string name="condition_snow">Schneefall</string>
     <string name="condition_thunderstorm">Gewitter</string>
 
