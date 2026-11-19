@@ -1,0 +1,6 @@
+{
+  "name": "PogodaReinmar",
+  "description": "PogodaReinmar — moj wariant aplikacji pogodowej, rozwijana pod urządzenia na systemie Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

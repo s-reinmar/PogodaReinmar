@@ -1,0 +1,107 @@
+<resources>
+    <string name="app_name">PogodaReinmar</string>
+
+    <!-- Search & GPS -->
+    <string name="search_placeholder">Stadt in Polen suchen…</string>
+    <string name="search_clear_cd">Suche löschen</string>
+    <string name="search_icon_cd">Ort suchen</string>
+    <string name="gps_refresh_cd">Aktuellen GPS-Standort abrufen</string>
+    <string name="manual_refresh_cd">Wetterdaten aktualisieren</string>
+    <string name="language_selector_cd">Anzeigesprache ändern</string>
+    <string name="language_menu_title">Anzeigesprache</string>
+    <string name="search_no_results">Keine Treffer in Polen</string>
+    <string name="search_loading">Orte werden gesucht…</string>
+    <string name="search_error_generic">Fehler bei der Ortssuche</string>
+
+    <!-- Station & Source Badges -->
+    <string name="imgw_station_badge">Station: IMGW %1$s (%2$s km, %3$s:00)</string>
+    <string name="imgw_unavailable_badge">IMGW-Station vorübergehend nicht erreichbar — Open-Meteo aktiv</string>
+    <string name="open_meteo_unavailable_badge">Open-Meteo vorübergehend nicht erreichbar — IMGW-PIB aktiv</string>
+    <string name="gps_fallback_notice">Standardort (Warschau). Aktivieren Sie GPS für Ihren aktuellen Standort.</string>
+    <string name="gps_disabled_notice">GPS-Standortdienste sind auf dem Gerät deaktiviert.</string>
+    <string name="gps_action_enable">GPS aktivieren</string>
+    <string name="gps_action_settings">Einstellungen</string>
+    <string name="gps_locating">GPS-Position wird ermittelt…</string>
+
+    <!-- Warnings -->
+    <string name="warning_level_prefix">IMGW-Warnung • Stufe %1$d</string>
+    <string name="warning_validity">Gültig: %1$s – %2$s</string>
+    <string name="warning_probability">Wahrscheinlichkeit: %1$d%%</string>
+    <string name="warning_expand_cd">Warnungsdetails ein- oder ausblenden</string>
+    <string name="warning_icon_cd">Wetterwarnung</string>
+
+    <!-- Forecast Sections & Time Labels -->
+    <string name="section_hourly_title">Stündliche Vorhersage (24h)</string>
+    <string name="section_hourly_source">Open-Meteo</string>
+    <string name="section_daily_title">7-Tage-Vorhersage</string>
+    <string name="section_details_title">Messdetails</string>
+    <string name="section_details_source">IMGW-PIB + Open-Meteo</string>
+    <string name="time_now">Jetzt</string>
+    <string name="day_today">Heute</string>
+    <string name="day_tomorrow">Morgen</string>
+
+    <!-- Weather Conditions -->
+    <string name="condition_clear">Wolkenlos</string>
+    <string name="condition_mainly_clear">Überwiegend klar</string>
+    <string name="condition_partly_cloudy">Teilweise bewölkt</string>
+    <string name="condition_overcast">Bedeckt</string>
+    <string name="condition_fog">Nebel</string>
+    <string name="condition_drizzle">Nieselregen</string>
+    <string name="condition_rain">Regen</string>
+    <string name="condition_heavy_rain">Starker Regen</string>
+    <string name="condition_freezing_rain">Gefrierender Regen</string>
+    <string name="condition_snow">Schneefall</string>
+    <string name="condition_thunderstorm">Gewitter</string>
+
+    <!-- Wind Directions -->
+    <string name="wind_dir_n">Nord</string>
+    <string name="wind_dir_ne">Nordost</string>
+    <string name="wind_dir_e">Ost</string>
+    <string name="wind_dir_se">Südost</string>
+    <string name="wind_dir_s">Süd</string>
+    <string name="wind_dir_sw">Südwest</string>
+    <string name="wind_dir_w">West</string>
+    <string name="wind_dir_nw">Nordwest</string>
+    <string name="wind_dir_unknown">Keine Richtung</string>
+
+    <!-- Metric Tiles & Descriptions -->
+    <string name="metric_wind">Wind</string>
+    <string name="metric_pressure">Luftdruck</string>
+    <string name="metric_humidity">Luftfeuchtigkeit</string>
+    <string name="metric_precipitation">Tagesniederschlag</string>
+    <string name="metric_uv">UV-Index</string>
+    <string name="metric_sun">Sonnenauf- &amp; untergang</string>
+    <string name="metric_sunrise">Aufgang</string>
+    <string name="metric_sunset">Untergang</string>
+    <string name="metric_no_data">Keine Messung</string>
+    <string name="metric_feels_like">Gefühlt %1$s°</string>
+    <string name="metric_high_low">Max. %1$d°  •  Min. %2$d°</string>
+
+    <string name="pressure_low">Niedrig</string>
+    <string name="pressure_normal">Normal</string>
+    <string name="pressure_high">Hoch</string>
+
+    <string name="humidity_dry">Trockene Luft</string>
+    <string name="humidity_comfortable">Angenehm</string>
+    <string name="humidity_humid">Feucht</string>
+    <string name="humidity_very_humid">Sehr feucht</string>
+
+    <string name="precip_none">Kein Niederschlag</string>
+    <string name="precip_light">Leichter Niederschlag</string>
+    <string name="precip_moderate">Mäßiger Niederschlag</string>
+    <string name="precip_heavy">Starker Niederschlag</string>
+    <string name="precip_source_imgw">IMGW-PIB • Tagessumme</string>
+    <string name="precip_source_open_meteo">Open-Meteo • aktuell</string>
+
+    <string name="uv_low">Niedrig</string>
+    <string name="uv_moderate">Mäßig</string>
+    <string name="uv_high">Hoch</string>
+    <string name="uv_very_high">Sehr hoch</string>
+    <string name="uv_extreme">Extrem</string>
+
+    <!-- States & Errors -->
+    <string name="error_both_failed_title">Wetterdaten nicht verfügbar</string>
+    <string name="error_both_failed_desc">Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.</string>
+    <string name="action_retry">Erneut versuchen</string>
+    <string name="source_footer">Bodenmessungen: IMGW-PIB • Vorhersage &amp; Geokodierung: Open-Meteo</string>
+</resources>
