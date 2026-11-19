@@ -3,6 +3,7 @@ package com.example.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.preferences.FavoriteCitiesGateway
 import com.example.data.preferences.LanguagePreferencesGateway
 import com.example.domain.model.AppLanguage
 import com.example.domain.model.GeoLocation
@@ -36,6 +37,7 @@ class WeatherViewModel(
     private val weatherRepository: WeatherRepository,
     private val locationGateway: LocationGateway,
     private val languagePreferences: LanguagePreferencesGateway,
+    private val favoriteCitiesGateway: FavoriteCitiesGateway,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WeatherUiState())
@@ -49,7 +51,19 @@ class WeatherViewModel(
 
     init {
         observeSavedLanguage()
+        observeFavoriteCities()
         observeDebouncedSearch()
+    }
+
+    private fun observeFavoriteCities() {
+        favoriteCitiesGateway.favoriteCities
+            .distinctUntilChanged()
+            .onEach { favorites ->
+                _uiState.update { state ->
+                    state.copy(favoriteCities = favorites)
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun observeSavedLanguage() {
@@ -107,8 +121,10 @@ class WeatherViewModel(
             )
             if (geocoded != null) {
                 val updated = currentLoc.copy(
-                    name = geocoded.first,
-                    admin1 = geocoded.second ?: currentLoc.admin1,
+                    name = geocoded.name,
+                    admin1 = geocoded.admin1 ?: currentLoc.admin1,
+                    countryName = geocoded.countryName ?: currentLoc.countryName,
+                    countryCode = currentLoc.countryCode ?: geocoded.countryCode,
                 )
                 applyLocalizedLocationMetadata(updated)
             }
@@ -259,6 +275,29 @@ class WeatherViewModel(
         loadWeatherForLocation(location, showFullShimmer = true)
     }
 
+    fun onToggleFavorite(location: GeoLocation = _uiState.value.selectedLocation) {
+        viewModelScope.launch {
+            favoriteCitiesGateway.toggleFavorite(location)
+        }
+    }
+
+    fun onRemoveFavorite(location: GeoLocation) {
+        viewModelScope.launch {
+            favoriteCitiesGateway.removeFavorite(location)
+        }
+    }
+
+    fun onSelectFavorite(location: GeoLocation) {
+        val currentState = _uiState.value
+        val alreadyShowing = currentState.selectedLocation.matchesLocation(location) &&
+            currentState.contentState is WeatherContentState.Success
+        if (alreadyShowing) {
+            onDismissSearchDropdown()
+            return
+        }
+        onLocationSelected(location)
+    }
+
     fun onRefreshWeather() {
         val currentLoc = _uiState.value.selectedLocation
         val hasExistingSuccess = _uiState.value.contentState is WeatherContentState.Success
@@ -371,13 +410,19 @@ class WeatherViewModel(
         private val weatherRepository: WeatherRepository,
         private val locationGateway: LocationGateway,
         private val languagePreferences: LanguagePreferencesGateway,
+        private val favoriteCitiesGateway: FavoriteCitiesGateway,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(WeatherViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return WeatherViewModel(weatherRepository, locationGateway, languagePreferences) as T
+            return WeatherViewModel(
+                weatherRepository = weatherRepository,
+                locationGateway = locationGateway,
+                languagePreferences = languagePreferences,
+                favoriteCitiesGateway = favoriteCitiesGateway,
+            ) as T
         }
     }
 }

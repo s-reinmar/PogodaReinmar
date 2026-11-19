@@ -17,7 +17,9 @@ data class OpenMeteoGeocodingResultDto(
     @SerialName("name") val name: String = "",
     @SerialName("latitude") val latitude: Double = 0.0,
     @SerialName("longitude") val longitude: Double = 0.0,
+    @SerialName("country") val country: String? = null,
     @SerialName("country_code") val countryCode: String? = null,
+    @SerialName("timezone") val timezone: String? = null,
     @SerialName("admin1") val admin1: String? = null,
     @SerialName("admin2") val admin2: String? = null,
 )
@@ -44,6 +46,7 @@ data class OpenMeteoCurrentDto(
     @SerialName("is_day") val isDay: Int? = null,
     @SerialName("precipitation") val precipitation: Double? = null,
     @SerialName("weather_code") val weatherCode: Int? = null,
+    @SerialName("pressure_msl") val pressureMsl: Double? = null,
     @SerialName("surface_pressure") val surfacePressure: Double? = null,
     @SerialName("wind_speed_10m") val windSpeed10m: Double? = null,
     @SerialName("wind_direction_10m") val windDirection10m: Double? = null,

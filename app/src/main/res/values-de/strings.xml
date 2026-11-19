@@ -2,21 +2,32 @@
     <string name="app_name">PogodaReinmar</string>
 
     <!-- Search & GPS -->
-    <string name="search_placeholder">Stadt in Polen suchen…</string>
+    <string name="search_placeholder">Stadt weltweit suchen…</string>
     <string name="search_clear_cd">Suche löschen</string>
     <string name="search_icon_cd">Ort suchen</string>
     <string name="gps_refresh_cd">Aktuellen GPS-Standort abrufen</string>
     <string name="manual_refresh_cd">Wetterdaten aktualisieren</string>
     <string name="language_selector_cd">Anzeigesprache ändern</string>
     <string name="language_menu_title">Anzeigesprache</string>
-    <string name="search_no_results">Keine Treffer in Polen</string>
+    <string name="search_no_results">Keine passenden Orte gefunden</string>
     <string name="search_loading">Orte werden gesucht…</string>
     <string name="search_error_generic">Fehler bei der Ortssuche</string>
+    <string name="search_source_imgw">IMGW</string>
+    <string name="search_source_open_meteo">Open-Meteo</string>
+
+    <!-- Favorites -->
+    <string name="favorites_section_label">Favoriten</string>
+    <string name="favorites_add_current">%1$s zu Favoriten hinzufügen</string>
+    <string name="favorite_add_cd">%1$s zu Favoriten hinzufügen</string>
+    <string name="favorite_remove_cd">%1$s aus Favoriten entfernen</string>
+    <string name="favorite_chip_select_cd">Wetter auf %1$s umschalten</string>
 
     <!-- Station & Source Badges -->
     <string name="imgw_station_badge">Station: IMGW %1$s (%2$s km, %3$s:00)</string>
     <string name="imgw_unavailable_badge">IMGW-Station vorübergehend nicht erreichbar — Open-Meteo aktiv</string>
     <string name="open_meteo_unavailable_badge">Open-Meteo vorübergehend nicht erreichbar — IMGW-PIB aktiv</string>
+    <string name="open_meteo_international_badge">Wetterdaten: Open-Meteo (Ausland)</string>
+    <string name="hero_local_time">Ortszeit • %1$s</string>
     <string name="gps_fallback_notice">Standardort (Warschau). Aktivieren Sie GPS für Ihren aktuellen Standort.</string>
     <string name="gps_disabled_notice">GPS-Standortdienste sind auf dem Gerät deaktiviert.</string>
     <string name="gps_action_enable">GPS aktivieren</string>
@@ -105,4 +116,5 @@
     <string name="error_both_failed_desc">Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.</string>
     <string name="action_retry">Erneut versuchen</string>
     <string name="source_footer">Bodenmessungen: IMGW-PIB • Vorhersage &amp; Geokodierung: Open-Meteo</string>
+    <string name="source_footer_international">Wetterdaten, Vorhersage &amp; Geokodierung: Open-Meteo</string>
 </resources>

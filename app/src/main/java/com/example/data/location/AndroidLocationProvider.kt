@@ -15,6 +15,7 @@ import com.example.domain.catalog.ImgwStationCatalog
 import com.example.domain.model.GeoLocation
 import com.example.domain.repository.LocationGateway
 import com.example.domain.repository.LocationLookupResult
+import com.example.domain.repository.ReverseGeocodedLocation
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -81,26 +82,40 @@ class AndroidLocationProvider(
             longitude = androidLocation.longitude,
             languageCode = languageCode,
         )
-        val nearestStation = ImgwStationCatalog.findNearestCatalogStation(
-            androidLocation.latitude,
-            androidLocation.longitude,
-        ).station
+        val isPoland = resolved?.countryCode?.equals("PL", ignoreCase = true)
+            ?: ImgwStationCatalog.isLikelyInPoland(androidLocation.latitude, androidLocation.longitude)
+        val nearestStation = if (isPoland) {
+            ImgwStationCatalog.findNearestCatalogStation(
+                androidLocation.latitude,
+                androidLocation.longitude,
+            ).station
+        } else {
+            null
+        }
 
-        val cityName = resolved?.first ?: nearestStation.name
-        val admin1 = resolved?.second
+        val cityName = resolved?.name
+            ?: nearestStation?.name
+            ?: String.format(Locale.US, "%.2f°, %.2f°", androidLocation.latitude, androidLocation.longitude)
+        val admin1 = resolved?.admin1
 
         return LocationLookupResult.Success(
             GeoLocation(
                 name = cityName,
                 admin1 = admin1,
+                countryName = resolved?.countryName,
+                countryCode = resolved?.countryCode ?: if (isPoland) "PL" else null,
                 latitude = androidLocation.latitude,
                 longitude = androidLocation.longitude,
                 isCurrentGps = true,
-                terytVoivodeshipCode = ImgwStationCatalog.resolveVoivodeshipTeryt(
-                    explicitTeryt = null,
-                    admin1 = admin1,
-                    fallbackStation = nearestStation,
-                ),
+                terytVoivodeshipCode = if (isPoland) {
+                    ImgwStationCatalog.resolveVoivodeshipTeryt(
+                        explicitTeryt = null,
+                        admin1 = admin1,
+                        fallbackStation = nearestStation,
+                    )
+                } else {
+                    null
+                },
             ),
         )
     }
@@ -158,7 +173,7 @@ class AndroidLocationProvider(
         latitude: Double,
         longitude: Double,
         languageCode: String,
-    ): Pair<String, String?>? =
+    ): ReverseGeocodedLocation? =
         withContext(Dispatchers.IO) {
             if (!Geocoder.isPresent()) return@withContext null
             val locale = Locale.forLanguageTag(languageCode)
@@ -184,6 +199,11 @@ class AndroidLocationProvider(
                 ?: address.subAdminArea
                 ?: address.featureName
                 ?: return@withContext null
-            Pair(city, address.adminArea)
+            ReverseGeocodedLocation(
+                name = city,
+                admin1 = address.adminArea,
+                countryName = address.countryName,
+                countryCode = address.countryCode,
+            )
         }
 }

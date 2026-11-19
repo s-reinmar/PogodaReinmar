@@ -224,6 +224,31 @@ object ImgwStationCatalog {
         return fallbackStation?.voivodeshipTeryt
     }
 
+    /**
+     * Heuristic check for whether WGS-84 coordinates fall within Poland's synoptic network coverage
+     * when no explicit ISO country code is available (e.g., GPS fix without Geocoder).
+     */
+    fun isLikelyInPoland(latitude: Double, longitude: Double): Boolean {
+        if (latitude !in 49.0..54.9 || longitude !in 14.1..24.2) return false
+        return findNearestCatalogStation(latitude, longitude).distanceKm <= 85.0
+    }
+
+    /**
+     * Authoritatively determines whether [location] should query Poland's IMGW-PIB endpoints.
+     * Uses ISO-3166-1 alpha-2 [com.example.domain.model.GeoLocation.countryCode] whenever available,
+     * falling back to TERYT code or geographic proximity to the IMGW station network.
+     */
+    fun isPolishLocation(location: com.example.domain.model.GeoLocation): Boolean {
+        val code = location.countryCode?.trim()
+        if (!code.isNullOrEmpty()) {
+            return code.equals("PL", ignoreCase = true)
+        }
+        if (!location.terytVoivodeshipCode.isNullOrBlank()) {
+            return true
+        }
+        return isLikelyInPoland(location.latitude, location.longitude)
+    }
+
     fun normalizeText(input: String): String {
         val decomposed = Normalizer.normalize(input, Normalizer.Form.NFD)
         return decomposed

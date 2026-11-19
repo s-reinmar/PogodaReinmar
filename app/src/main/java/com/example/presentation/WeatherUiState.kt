@@ -40,8 +40,12 @@ data class GpsUiState(
 data class WeatherUiState(
     val selectedLanguage: AppLanguage = AppLanguage.defaultForSystem(),
     val selectedLocation: GeoLocation = GeoLocation.WARSAW,
+    val favoriteCities: List<GeoLocation> = emptyList(),
     val contentState: WeatherContentState = WeatherContentState.Loading,
     val isRefreshing: Boolean = false,
     val search: SearchUiState = SearchUiState(),
     val gps: GpsUiState = GpsUiState(),
-)
+) {
+    val isSelectedLocationFavorite: Boolean
+        get() = favoriteCities.any { it.matchesLocation(selectedLocation) }
+}

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.domain.model.DataSourceStatus
 import com.example.domain.model.HybridWeatherBundle
 import com.example.domain.util.WeatherCodeMapper
 import com.example.ui.theme.RainCyan
@@ -80,7 +81,11 @@ fun WeatherDetailsBentoGrid(
                 color = Color.White,
             )
             Text(
-                text = appString(R.string.section_details_source),
+                text = if (bundle.imgwStatus is DataSourceStatus.NotApplicable) {
+                    appString(R.string.section_hourly_source)
+                } else {
+                    appString(R.string.section_details_source)
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.65f),
             )

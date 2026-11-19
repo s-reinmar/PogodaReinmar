@@ -2,21 +2,32 @@
     <string name="app_name">PogodaReinmar</string>
 
     <!-- Search & GPS -->
-    <string name="search_placeholder">Szukaj miasta w Polsce…</string>
+    <string name="search_placeholder">Szukaj miasta na świecie…</string>
     <string name="search_clear_cd">Wyczyść wyszukiwanie</string>
     <string name="search_icon_cd">Wyszukaj lokalizację</string>
     <string name="gps_refresh_cd">Pobierz aktualną lokalizację GPS</string>
     <string name="manual_refresh_cd">Odśwież dane pogodowe</string>
     <string name="language_selector_cd">Zmień język nazw wyświetlanych</string>
     <string name="language_menu_title">Język aplikacji</string>
-    <string name="search_no_results">Brak wyników w Polsce</string>
+    <string name="search_no_results">Brak pasujących miejsc</string>
     <string name="search_loading">Wyszukiwanie miejscowości…</string>
     <string name="search_error_generic">Błąd wyszukiwania miejscowości</string>
+    <string name="search_source_imgw">IMGW</string>
+    <string name="search_source_open_meteo">Open-Meteo</string>
+
+    <!-- Favorites -->
+    <string name="favorites_section_label">Ulubione</string>
+    <string name="favorites_add_current">Dodaj %1$s do ulubionych</string>
+    <string name="favorite_add_cd">Dodaj %1$s do ulubionych</string>
+    <string name="favorite_remove_cd">Usuń %1$s z ulubionych</string>
+    <string name="favorite_chip_select_cd">Przełącz pogodę na %1$s</string>
 
     <!-- Station & Source Badges -->
     <string name="imgw_station_badge">Pomiar: stacja IMGW %1$s (%2$s km, godz. %3$s:00)</string>
     <string name="imgw_unavailable_badge">Stacja IMGW chwilowo niedostępna — dane z Open-Meteo</string>
     <string name="open_meteo_unavailable_badge">Prognoza Open-Meteo chwilowo niedostępna — dane IMGW-PIB</string>
+    <string name="open_meteo_international_badge">Dane pogodowe: Open-Meteo (zagranica)</string>
+    <string name="hero_local_time">Czas lokalny • %1$s</string>
     <string name="gps_fallback_notice">Lokalizacja domyślna (Warszawa). Włącz GPS, aby zobaczyć pogodę dla swojej pozycji.</string>
     <string name="gps_disabled_notice">Usługi lokalizacji GPS są wyłączone w systemie Android.</string>
     <string name="gps_action_enable">Włącz GPS</string>
@@ -105,4 +116,5 @@
     <string name="error_both_failed_desc">Sprawdź połączenie z internetem i spróbuj ponownie.</string>
     <string name="action_retry">Spróbuj ponownie</string>
     <string name="source_footer">Pomiary naziemne: IMGW-PIB • Prognoza i geokodowanie: Open-Meteo</string>
+    <string name="source_footer_international">Dane pogodowe, prognoza i geokodowanie: Open-Meteo</string>
 </resources>

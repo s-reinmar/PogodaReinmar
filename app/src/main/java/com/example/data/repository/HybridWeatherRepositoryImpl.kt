@@ -44,12 +44,18 @@ class HybridWeatherRepositoryImpl(
 
     override suspend fun fetchHybridWeather(location: GeoLocation): HybridWeatherBundle =
         withContext(ioDispatcher) {
+            val isPoland = ImgwStationCatalog.isPolishLocation(location)
+
             supervisorScope {
-                val synopDeferred = async {
-                    safeApiCall { imgwApi.getSynopStations() }
+                val synopDeferred = if (isPoland) {
+                    async { safeApiCall { imgwApi.getSynopStations() } }
+                } else {
+                    null
                 }
-                val warningsDeferred = async {
-                    safeApiCall { fetchAndParseImgwWarnings() }
+                val warningsDeferred = if (isPoland) {
+                    async { safeApiCall { fetchAndParseImgwWarnings() } }
+                } else {
+                    null
                 }
                 val openMeteoDeferred = async {
                     safeApiCall {
@@ -60,22 +66,22 @@ class HybridWeatherRepositoryImpl(
                     }
                 }
 
-                val synopResult = synopDeferred.await()
-                val warningsResult = warningsDeferred.await()
+                val synopResult = synopDeferred?.await()
+                val warningsResult = warningsDeferred?.await()
                 val openMeteoResult = openMeteoDeferred.await()
 
-                val nearestCatalogStation = ImgwStationCatalog.findNearestCatalogStation(
-                    location.latitude,
-                    location.longitude,
-                ).station
-
-                val imgwMeasurement = synopResult.getOrNull()?.let { stations ->
-                    matchNearestImgwMeasurement(location, stations)
+                val imgwMeasurement = if (isPoland) {
+                    synopResult?.getOrNull()?.let { stations ->
+                        matchNearestImgwMeasurement(location, stations)
+                    }
+                } else {
+                    null
                 }
 
                 val imgwStatus: DataSourceStatus = when {
+                    !isPoland -> DataSourceStatus.NotApplicable
                     imgwMeasurement != null -> DataSourceStatus.Available
-                    synopResult.isFailure -> DataSourceStatus.Unavailable(
+                    synopResult?.isFailure == true -> DataSourceStatus.Unavailable(
                         synopResult.exceptionOrNull()?.localizedMessage
                             ?: "Brak odpowiedzi serwera IMGW-PIB",
                     )
@@ -83,7 +89,10 @@ class HybridWeatherRepositoryImpl(
                 }
 
                 val openMeteoForecast = openMeteoResult.getOrNull()?.let { dto ->
-                    mapOpenMeteoForecast(dto)
+                    mapOpenMeteoForecast(
+                        dto = dto,
+                        fallbackTimezoneId = location.timezoneId ?: if (isPoland) "Europe/Warsaw" else null,
+                    )
                 }
 
                 val openMeteoStatus: DataSourceStatus = when {
@@ -94,21 +103,33 @@ class HybridWeatherRepositoryImpl(
                     )
                 }
 
-                val voivodeshipTeryt = ImgwStationCatalog.resolveVoivodeshipTeryt(
-                    explicitTeryt = location.terytVoivodeshipCode,
-                    admin1 = location.admin1,
-                    fallbackStation = nearestCatalogStation,
-                )
+                val relevantWarnings = if (isPoland) {
+                    val nearestCatalogStation = ImgwStationCatalog.findNearestCatalogStation(
+                        location.latitude,
+                        location.longitude,
+                    ).station
+                    val voivodeshipTeryt = ImgwStationCatalog.resolveVoivodeshipTeryt(
+                        explicitTeryt = location.terytVoivodeshipCode,
+                        admin1 = location.admin1,
+                        fallbackStation = nearestCatalogStation,
+                    )
+                    filterWarningsForRegion(
+                        warnings = warningsResult?.getOrDefault(emptyList()).orEmpty(),
+                        voivodeshipTeryt = voivodeshipTeryt,
+                    )
+                } else {
+                    emptyList()
+                }
 
-                val relevantWarnings = filterWarningsForRegion(
-                    warnings = warningsResult.getOrDefault(emptyList()),
-                    voivodeshipTeryt = voivodeshipTeryt,
-                )
+                val resolvedTimezoneId = openMeteoForecast?.timezoneId
+                    ?: location.timezoneId
+                    ?: if (isPoland) "Europe/Warsaw" else null
 
                 val isDaytime = PolishDateTimeUtils.isCurrentlyDaytime(
                     sunriseIso = openMeteoForecast?.todaySunriseIso,
                     sunsetIso = openMeteoForecast?.todaySunsetIso,
                     fallbackIsDay = openMeteoForecast?.isDayNow ?: true,
+                    timezoneId = resolvedTimezoneId,
                 )
 
                 val effectiveTemp = imgwMeasurement?.temperatureC ?: openMeteoForecast?.currentTempC
@@ -124,7 +145,9 @@ class HybridWeatherRepositoryImpl(
                     ?: openMeteoForecast?.currentWindSpeedKmh?.div(3.6)
 
                 HybridWeatherBundle(
-                    location = location,
+                    location = location.copy(
+                        timezoneId = resolvedTimezoneId ?: location.timezoneId,
+                    ),
                     imgwMeasurement = imgwMeasurement,
                     imgwStatus = imgwStatus,
                     warnings = relevantWarnings,
@@ -145,6 +168,7 @@ class HybridWeatherRepositoryImpl(
                     sunriseProgress = PolishDateTimeUtils.computeSolarProgress(
                         sunriseIso = openMeteoForecast?.todaySunriseIso,
                         sunsetIso = openMeteoForecast?.todaySunsetIso,
+                        timezoneId = resolvedTimezoneId,
                     ),
                 )
             }
@@ -161,22 +185,29 @@ class HybridWeatherRepositoryImpl(
             safeApiCall {
                 val response = geocodingApi.searchCities(query = trimmed, language = languageCode)
                 response.results.orEmpty()
-                    .filter { it.countryCode == null || it.countryCode.equals("PL", ignoreCase = true) }
                     .map { item ->
+                        val isPoland = item.countryCode.equals("PL", ignoreCase = true)
                         GeoLocation(
                             name = item.name,
                             admin1 = item.admin1,
+                            countryName = item.country,
+                            countryCode = item.countryCode,
+                            timezoneId = item.timezone,
                             latitude = item.latitude,
                             longitude = item.longitude,
                             isCurrentGps = false,
-                            terytVoivodeshipCode = ImgwStationCatalog.resolveVoivodeshipTeryt(
-                                explicitTeryt = null,
-                                admin1 = item.admin1,
-                                fallbackStation = null,
-                            ),
+                            terytVoivodeshipCode = if (isPoland) {
+                                ImgwStationCatalog.resolveVoivodeshipTeryt(
+                                    explicitTeryt = null,
+                                    admin1 = item.admin1,
+                                    fallbackStation = null,
+                                )
+                            } else {
+                                null
+                            },
                         )
                     }
-                    .distinctBy { "${it.name}|${it.admin1}" }
+                    .distinctBy { "${it.name}|${it.admin1}|${it.countryCode}" }
             }
         }
 
@@ -271,24 +302,31 @@ class HybridWeatherRepositoryImpl(
             .sortedByDescending { it.level }
     }
 
-    private fun mapOpenMeteoForecast(dto: OpenMeteoForecastResponseDto): OpenMeteoForecast {
+    private fun mapOpenMeteoForecast(
+        dto: OpenMeteoForecastResponseDto,
+        fallbackTimezoneId: String?,
+    ): OpenMeteoForecast {
         val current = dto.current
         val hourly = dto.hourly
         val daily = dto.daily
+        val timezoneId = dto.timezone?.takeIf { it.isNotBlank() } ?: fallbackTimezoneId
 
-        val nowHourIso = PolishDateTimeUtils.currentWarsawHourIso()
+        val nowHourIso = current?.time?.takeIf { it.length >= 13 }?.substring(0, 13)?.plus(":00")
+            ?: PolishDateTimeUtils.currentHourIso(timezoneId = timezoneId)
         val hourlyItems = buildHourly24h(hourly, nowHourIso)
-        val dailyItems = buildDaily7d(daily)
+        val dailyItems = buildDaily7d(daily, timezoneId)
 
         val todayDaily = dailyItems.firstOrNull()
 
         return OpenMeteoForecast(
+            timezoneId = timezoneId,
+            currentLocalTimeLabel = PolishDateTimeUtils.extractTimeLabel(current?.time),
             currentTempC = current?.temperature2m,
             apparentTempC = current?.apparentTemperature,
             currentWeatherCode = current?.weatherCode,
             isDayNow = (current?.isDay ?: 1) == 1,
             currentHumidityPct = current?.relativeHumidity2m,
-            currentPressureHpa = current?.surfacePressure,
+            currentPressureHpa = current?.pressureMsl ?: current?.surfacePressure,
             currentWindSpeedKmh = current?.windSpeed10m,
             currentWindDirectionDeg = current?.windDirection10m?.toFloat(),
             currentPrecipitationMm = current?.precipitation,
@@ -333,11 +371,16 @@ class HybridWeatherRepositoryImpl(
 
     private fun buildDaily7d(
         daily: com.example.data.remote.dto.OpenMeteoDailyDto?,
+        timezoneId: String?,
     ): List<DailyForecastItem> {
         if (daily == null || daily.time.isEmpty()) return emptyList()
 
         return daily.time.take(7).mapIndexed { index, isoDate ->
-            val (dayLabel, shortDate) = PolishDateTimeUtils.formatDailyLabels(isoDate, index)
+            val (dayLabel, shortDate) = PolishDateTimeUtils.formatDailyLabels(
+                isoDate = isoDate,
+                index = index,
+                timezoneId = timezoneId,
+            )
             DailyForecastItem(
                 isoDate = isoDate,
                 dayLabel = dayLabel,

@@ -11,6 +11,7 @@ enum class AppLanguage(
     val nativeName: String,
     val warsawCityName: String,
     val warsawRegionName: String,
+    val warsawCountryName: String,
 ) {
     POLISH(
         code = "pl",
@@ -18,6 +19,7 @@ enum class AppLanguage(
         nativeName = "Polski",
         warsawCityName = "Warszawa",
         warsawRegionName = "Województwo mazowieckie",
+        warsawCountryName = "Polska",
     ),
     ENGLISH(
         code = "en",
@@ -25,6 +27,7 @@ enum class AppLanguage(
         nativeName = "English",
         warsawCityName = "Warsaw",
         warsawRegionName = "Masovian Voivodeship",
+        warsawCountryName = "Poland",
     ),
     GERMAN(
         code = "de",
@@ -32,6 +35,7 @@ enum class AppLanguage(
         nativeName = "Deutsch",
         warsawCityName = "Warschau",
         warsawRegionName = "Woiwodschaft Masowien",
+        warsawCountryName = "Polen",
     );
 
     fun toLocale(): Locale = when (this) {
@@ -43,6 +47,7 @@ enum class AppLanguage(
     fun localizedWarsaw(): GeoLocation = GeoLocation.WARSAW.copy(
         name = warsawCityName,
         admin1 = warsawRegionName,
+        countryName = warsawCountryName,
     )
 
     companion object {

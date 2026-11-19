@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -58,12 +60,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.domain.catalog.ImgwStationCatalog
 import com.example.domain.model.AppLanguage
 import com.example.domain.model.GeoLocation
 import com.example.presentation.GpsUiState
 import com.example.presentation.SearchUiState
 import com.example.ui.theme.SkyPalette
+import com.example.ui.theme.SunAmber
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Top brand & controls header (PogodaReinmar title, inline expandable PL/EN/DE display language
@@ -75,12 +80,14 @@ fun WeatherSearchHeader(
     selectedLanguage: AppLanguage,
     searchState: SearchUiState,
     gpsState: GpsUiState,
+    favoriteCities: List<GeoLocation> = emptyList(),
     isRefreshing: Boolean,
     palette: SkyPalette,
     onLanguageSelected: (AppLanguage) -> Unit,
     onQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onSelectLocation: (GeoLocation) -> Unit,
+    onToggleFavorite: (GeoLocation) -> Unit = {},
     onGpsClick: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onRefreshClick: () -> Unit,
@@ -357,13 +364,16 @@ fun WeatherSearchHeader(
 
                         else -> {
                             searchState.results.take(6).forEachIndexed { index, city ->
+                                val isFavorite = favoriteCities.any { it.matchesLocation(city) }
                                 SearchResultRow(
                                     city = city,
+                                    isFavorite = isFavorite,
                                     accentColor = palette.accent,
                                     onClick = {
                                         focusManager.clearFocus()
                                         onSelectLocation(city)
                                     },
+                                    onToggleFavorite = { onToggleFavorite(city) },
                                 )
                                 if (index < searchState.results.take(6).lastIndex) {
                                     HorizontalDivider(
@@ -514,22 +524,30 @@ private fun InlineLanguageSelectorBar(
 @Composable
 private fun SearchResultRow(
     city: GeoLocation,
+    isFavorite: Boolean,
     accentColor: Color,
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
 ) {
+    val isPoland = ImgwStationCatalog.isPolishLocation(city)
+    val subtitle = city.formattedSubtitle()
+    val latHemisphere = if (city.latitude >= 0.0) "N" else "S"
+    val lonHemisphere = if (city.longitude >= 0.0) "E" else "W"
+
+    val countryTagSuffix = city.countryCode?.lowercase(Locale.US)?.let { "_$it" }.orEmpty()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
+            .heightIn(min = 56.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .testTag("search_result_${city.name.lowercase()}"),
+            .padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp)
+            .testTag("search_result_${city.name.lowercase(Locale.US)}$countryTagSuffix"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = Icons.Rounded.LocationOn,
             contentDescription = null,
-            tint = accentColor,
+            tint = if (isPoland) accentColor else Color.White.copy(alpha = 0.78f),
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.width(12.dp))
@@ -541,28 +559,75 @@ private fun SearchResultRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (!city.admin1.isNullOrBlank()) {
+            if (!subtitle.isNullOrBlank()) {
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = city.admin1,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.68f),
+                    color = Color.White.copy(alpha = 0.70f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
         Spacer(Modifier.width(8.dp))
-        Box(contentAlignment = Alignment.CenterEnd) {
+        Column(horizontalAlignment = Alignment.End) {
+            Surface(
+                shape = CircleShape,
+                color = if (isPoland) {
+                    accentColor.copy(alpha = 0.20f)
+                } else {
+                    Color.White.copy(alpha = 0.12f)
+                },
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isPoland) {
+                        accentColor.copy(alpha = 0.55f)
+                    } else {
+                        Color.White.copy(alpha = 0.22f)
+                    },
+                ),
+            ) {
+                Text(
+                    text = if (isPoland) {
+                        appString(R.string.search_source_imgw)
+                    } else {
+                        appString(R.string.search_source_open_meteo)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isPoland) accentColor else Color.White.copy(alpha = 0.88f),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+            Spacer(Modifier.height(3.dp))
             Text(
                 text = String.format(
                     Locale.US,
-                    "%.2f°N, %.2f°E",
-                    city.latitude,
-                    city.longitude,
+                    "%.2f°%s, %.2f°%s",
+                    abs(city.latitude),
+                    latHemisphere,
+                    abs(city.longitude),
+                    lonHemisphere,
                 ),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.55f),
+                color = Color.White.copy(alpha = 0.52f),
+            )
+        }
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("search_favorite_toggle_${city.name.lowercase(Locale.US)}$countryTagSuffix"),
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                contentDescription = if (isFavorite) {
+                    appString(R.string.favorite_remove_cd, city.name)
+                } else {
+                    appString(R.string.favorite_add_cd, city.name)
+                },
+                tint = if (isFavorite) SunAmber else Color.White.copy(alpha = 0.65f),
+                modifier = Modifier.size(21.dp),
             )
         }
     }

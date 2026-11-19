@@ -1,5 +1,7 @@
 package com.example.ui.weather
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,12 +19,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Sensors
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +53,8 @@ import kotlin.math.roundToInt
 fun WeatherHeroSection(
     bundle: HybridWeatherBundle,
     palette: SkyPalette,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val activeLocale = LocalAppLanguage.current.toLocale()
@@ -58,6 +67,22 @@ fun WeatherHeroSection(
         }
     } ?: "—°"
 
+    val starTint by animateColorAsState(
+        targetValue = if (isFavorite) SunAmber else Color.White.copy(alpha = 0.85f),
+        animationSpec = spring(),
+        label = "heroFavoriteTint",
+    )
+    val starContainer by animateColorAsState(
+        targetValue = if (isFavorite) SunAmber.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.10f),
+        animationSpec = spring(),
+        label = "heroFavoriteContainer",
+    )
+    val starBorder by animateColorAsState(
+        targetValue = if (isFavorite) SunAmber.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.20f),
+        animationSpec = spring(),
+        label = "heroFavoriteBorder",
+    )
+
     BentoGlassCard(
         palette = palette,
         highlighted = true,
@@ -67,42 +92,75 @@ fun WeatherHeroSection(
             .fillMaxWidth()
             .testTag("weather_hero_card"),
     ) {
-        // City header + voivodeship
+        // City header + region/country + Favorite star toggle button
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            if (bundle.location.isCurrentGps) {
-                Icon(
-                    imageVector = Icons.Rounded.MyLocation,
-                    contentDescription = null,
-                    tint = palette.accent,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = bundle.location.name,
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-        }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (bundle.location.isCurrentGps) {
+                        Icon(
+                            imageVector = Icons.Rounded.MyLocation,
+                            contentDescription = null,
+                            tint = palette.accent,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Text(
+                        text = bundle.location.name,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
 
-        if (!bundle.location.admin1.isNullOrBlank()) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = bundle.location.admin1,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.72f),
-            )
+                val locationSubtitle = bundle.location.formattedSubtitle()
+                if (!locationSubtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = locationSubtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.72f),
+                    )
+                }
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = starContainer,
+                border = BorderStroke(1.dp, starBorder),
+            ) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .testTag("hero_favorite_toggle_button"),
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                        contentDescription = if (isFavorite) {
+                            appString(R.string.favorite_remove_cd, bundle.location.name)
+                        } else {
+                            appString(R.string.favorite_add_cd, bundle.location.name)
+                        },
+                        tint = starTint,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(10.dp))
 
-        // IMGW-PIB Station Attribution Badge OR Resilient Fallback Badge
-        when (val status = bundle.imgwStatus) {
+        // IMGW-PIB Station Attribution Badge (Poland) OR Open-Meteo International Badge (abroad)
+        when (bundle.imgwStatus) {
             is DataSourceStatus.Available -> {
                 val imgw = bundle.imgwMeasurement
                 if (imgw != null) {
@@ -121,6 +179,16 @@ fun WeatherHeroSection(
                         testTag = "imgw_station_badge",
                     )
                 }
+            }
+            is DataSourceStatus.NotApplicable -> {
+                StationAttributionPill(
+                    text = appString(R.string.open_meteo_international_badge),
+                    icon = Icons.Rounded.Public,
+                    tint = palette.accent,
+                    containerColor = Color.White.copy(alpha = 0.12f),
+                    borderColor = palette.accent.copy(alpha = 0.40f),
+                    testTag = "open_meteo_international_badge",
+                )
             }
             is DataSourceStatus.Unavailable -> {
                 StationAttributionPill(
@@ -202,8 +270,13 @@ fun WeatherHeroSection(
                     ),
                 )
             }
-            bundle.imgwMeasurement?.measurementDate?.takeIf { it.isNotBlank() }?.let { date ->
-                HeroMetaChip(label = "IMGW • $date")
+            val imgwDate = bundle.imgwMeasurement?.measurementDate?.takeIf { it.isNotBlank() }
+            if (imgwDate != null) {
+                HeroMetaChip(label = "IMGW • $imgwDate")
+            } else {
+                bundle.openMeteo?.currentLocalTimeLabel?.takeIf { it.isNotBlank() }?.let { localTime ->
+                    HeroMetaChip(label = appString(R.string.hero_local_time, localTime))
+                }
             }
         }
     }

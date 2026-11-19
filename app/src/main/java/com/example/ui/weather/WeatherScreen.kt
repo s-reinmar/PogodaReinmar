@@ -114,6 +114,9 @@ fun WeatherScreen(
         onQueryChange = viewModel::onSearchQueryChanged,
         onClearSearch = viewModel::onClearSearch,
         onSelectLocation = viewModel::onLocationSelected,
+        onSelectFavorite = viewModel::onSelectFavorite,
+        onToggleFavorite = viewModel::onToggleFavorite,
+        onRemoveFavorite = viewModel::onRemoveFavorite,
         onGpsClick = {
             if (hasLocationPermission()) {
                 viewModel.refreshGpsLocation()
@@ -150,6 +153,9 @@ fun WeatherScreenContent(
     onQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onSelectLocation: (GeoLocation) -> Unit,
+    onSelectFavorite: (GeoLocation) -> Unit = {},
+    onToggleFavorite: (GeoLocation) -> Unit = {},
+    onRemoveFavorite: (GeoLocation) -> Unit = {},
     onGpsClick: () -> Unit,
     onOpenLocationSettings: () -> Unit = {},
     onRefreshClick: () -> Unit,
@@ -196,16 +202,35 @@ fun WeatherScreenContent(
                             selectedLanguage = uiState.selectedLanguage,
                             searchState = uiState.search,
                             gpsState = uiState.gps,
+                            favoriteCities = uiState.favoriteCities,
                             isRefreshing = uiState.isRefreshing,
                             palette = palette,
                             onLanguageSelected = onLanguageSelected,
                             onQueryChange = onQueryChange,
                             onClearSearch = onClearSearch,
                             onSelectLocation = onSelectLocation,
+                            onToggleFavorite = onToggleFavorite,
                             onGpsClick = onGpsClick,
                             onOpenLocationSettings = onOpenLocationSettings,
                             onRefreshClick = onRefreshClick,
                         )
+                    }
+
+                    // Quick-switch Favorites bar (hidden while search dropdown is open)
+                    if (!uiState.search.isDropdownOpen) {
+                        item(key = "favorites_bar") {
+                            WeatherFavoritesBar(
+                                favoriteCities = uiState.favoriteCities,
+                                selectedLocation = uiState.selectedLocation,
+                                isSelectedFavorite = uiState.isSelectedLocationFavorite,
+                                palette = palette,
+                                onSelectFavorite = onSelectFavorite,
+                                onToggleCurrentFavorite = {
+                                    onToggleFavorite(uiState.selectedLocation)
+                                },
+                                onRemoveFavorite = onRemoveFavorite,
+                            )
+                        }
                     }
 
                     when (val content = uiState.contentState) {
@@ -238,11 +263,13 @@ fun WeatherScreenContent(
                                 }
                             }
 
-                            // 2. Hero section (IMGW-PIB primary temperature & station badge)
+                            // 2. Hero section (IMGW-PIB primary temperature & station badge + favorite toggle)
                             item(key = "hero_section") {
                                 WeatherHeroSection(
                                     bundle = bundle,
                                     palette = palette,
+                                    isFavorite = uiState.isSelectedLocationFavorite,
+                                    onToggleFavorite = { onToggleFavorite(bundle.location) },
                                 )
                             }
 
@@ -286,7 +313,11 @@ fun WeatherScreenContent(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = appString(R.string.source_footer),
+                                        text = if (bundle.imgwStatus is DataSourceStatus.NotApplicable) {
+                                            appString(R.string.source_footer_international)
+                                        } else {
+                                            appString(R.string.source_footer)
+                                        },
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White.copy(alpha = 0.54f),
                                         textAlign = TextAlign.Center,
@@ -465,6 +496,25 @@ private fun WeatherScreenDayPreview() {
         WeatherScreenContent(
             uiState = WeatherUiState(
                 selectedLocation = GeoLocation.WARSAW,
+                favoriteCities = listOf(
+                    GeoLocation.WARSAW,
+                    GeoLocation(
+                        name = "Kraków",
+                        admin1 = "Województwo małopolskie",
+                        countryName = "Polska",
+                        countryCode = "PL",
+                        latitude = 50.0647,
+                        longitude = 19.9450,
+                    ),
+                    GeoLocation(
+                        name = "Tokio",
+                        countryName = "Japonia",
+                        countryCode = "JP",
+                        timezoneId = "Asia/Tokyo",
+                        latitude = 35.6762,
+                        longitude = 139.6503,
+                    ),
+                ),
                 contentState = WeatherContentState.Success(
                     samplePreviewBundle(isDaytime = true, includeWarning = false, imgwOnline = true),
                 ),

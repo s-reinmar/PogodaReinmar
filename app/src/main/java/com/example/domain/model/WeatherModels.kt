@@ -1,20 +1,59 @@
 package com.example.domain.model
 
 /**
- * Geographic location selected by GPS or Open-Meteo Geocoding search.
+ * Geographic location selected by GPS or Open-Meteo Geocoding search (Poland or worldwide).
  */
 data class GeoLocation(
     val name: String,
     val admin1: String? = null,
+    val countryName: String? = null,
+    val countryCode: String? = null,
+    val timezoneId: String? = null,
     val latitude: Double,
     val longitude: Double,
     val isCurrentGps: Boolean = false,
     val terytVoivodeshipCode: String? = null,
 ) {
+    /**
+     * Checks whether two locations refer to the same city within ~2 km coordinate tolerance,
+     * keeping favorites stable across language switches and GPS vs. geocoded coordinates.
+     */
+    fun matchesLocation(other: GeoLocation): Boolean =
+        kotlin.math.abs(latitude - other.latitude) < 0.02 &&
+            kotlin.math.abs(longitude - other.longitude) < 0.02
+
+    /**
+     * Deterministic key suitable for Compose LazyRow/LazyColumn item keys.
+     */
+    fun stableId(): String =
+        "${countryCode.orEmpty().uppercase()}_${(latitude * 100).toInt()}_${(longitude * 100).toInt()}_${name.lowercase()}"
+
+    /**
+     * Builds a clean region + country subtitle avoiding duplicate segments (e.g. "Berlin, Niemcy").
+     */
+    fun formattedSubtitle(): String? {
+        val parts = buildList {
+            val cleanAdmin = admin1?.trim()?.takeIf {
+                it.isNotEmpty() && !it.equals(name.trim(), ignoreCase = true)
+            }
+            val cleanCountry = countryName?.trim()?.takeIf {
+                it.isNotEmpty() && !it.equals(name.trim(), ignoreCase = true)
+            }
+            if (cleanAdmin != null) add(cleanAdmin)
+            if (cleanCountry != null && !cleanCountry.equals(cleanAdmin, ignoreCase = true)) {
+                add(cleanCountry)
+            }
+        }
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")
+    }
+
     companion object {
         val WARSAW = GeoLocation(
             name = "Warszawa",
             admin1 = "Województwo mazowieckie",
+            countryName = "Polska",
+            countryCode = "PL",
+            timezoneId = "Europe/Warsaw",
             latitude = 52.2297,
             longitude = 21.0122,
             isCurrentGps = false,
@@ -109,6 +148,8 @@ data class DailyForecastItem(
  * Aggregated forecast payload from Open-Meteo.
  */
 data class OpenMeteoForecast(
+    val timezoneId: String? = null,
+    val currentLocalTimeLabel: String? = null,
     val currentTempC: Double?,
     val apparentTempC: Double?,
     val currentWeatherCode: Int?,
@@ -150,6 +191,7 @@ enum class WeatherCondition(val polishLabel: String) {
  */
 sealed interface DataSourceStatus {
     data object Available : DataSourceStatus
+    data object NotApplicable : DataSourceStatus
     data class Unavailable(val reason: String) : DataSourceStatus
 }
 

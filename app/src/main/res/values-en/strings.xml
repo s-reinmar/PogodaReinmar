@@ -2,21 +2,32 @@
     <string name="app_name">PogodaReinmar</string>
 
     <!-- Search & GPS -->
-    <string name="search_placeholder">Search city in Poland…</string>
+    <string name="search_placeholder">Search any city worldwide…</string>
     <string name="search_clear_cd">Clear search</string>
     <string name="search_icon_cd">Search location</string>
     <string name="gps_refresh_cd">Use current GPS location</string>
     <string name="manual_refresh_cd">Refresh weather data</string>
     <string name="language_selector_cd">Change display language</string>
     <string name="language_menu_title">Display language</string>
-    <string name="search_no_results">No matching locations in Poland</string>
+    <string name="search_no_results">No matching locations found</string>
     <string name="search_loading">Searching locations…</string>
     <string name="search_error_generic">Location search failed</string>
+    <string name="search_source_imgw">IMGW</string>
+    <string name="search_source_open_meteo">Open-Meteo</string>
+
+    <!-- Favorites -->
+    <string name="favorites_section_label">Favorites</string>
+    <string name="favorites_add_current">Pin %1$s to Favorites</string>
+    <string name="favorite_add_cd">Add %1$s to favorites</string>
+    <string name="favorite_remove_cd">Remove %1$s from favorites</string>
+    <string name="favorite_chip_select_cd">Switch weather to %1$s</string>
 
     <!-- Station & Source Badges -->
     <string name="imgw_station_badge">Station: IMGW %1$s (%2$s km, %3$s:00)</string>
     <string name="imgw_unavailable_badge">IMGW station temporarily unavailable — showing Open-Meteo</string>
     <string name="open_meteo_unavailable_badge">Open-Meteo forecast temporarily unavailable — showing IMGW-PIB</string>
+    <string name="open_meteo_international_badge">Weather data: Open-Meteo (international)</string>
+    <string name="hero_local_time">Local time • %1$s</string>
     <string name="gps_fallback_notice">Default location (Warsaw). Enable GPS to view weather for your current position.</string>
     <string name="gps_disabled_notice">Device GPS location services are turned off.</string>
     <string name="gps_action_enable">Enable GPS</string>
@@ -105,4 +116,5 @@
     <string name="error_both_failed_desc">Check your internet connection and try again.</string>
     <string name="action_retry">Try again</string>
     <string name="source_footer">Ground telemetry: IMGW-PIB • Forecast &amp; geocoding: Open-Meteo</string>
+    <string name="source_footer_international">Weather data, forecast &amp; geocoding: Open-Meteo</string>
 </resources>

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.location.AndroidLocationProvider
+import com.example.data.preferences.DataStoreFavoriteCitiesPreferences
 import com.example.data.preferences.DataStoreLanguagePreferences
 import com.example.data.repository.HybridWeatherRepositoryImpl
 import com.example.presentation.WeatherViewModel
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity() {
     private val weatherRepository by lazy { HybridWeatherRepositoryImpl() }
     private val locationProvider by lazy { AndroidLocationProvider(applicationContext) }
     private val languagePreferences by lazy { DataStoreLanguagePreferences(applicationContext) }
+    private val favoriteCitiesPreferences by lazy { DataStoreFavoriteCitiesPreferences(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
                         weatherRepository = weatherRepository,
                         locationGateway = locationProvider,
                         languagePreferences = languagePreferences,
+                        favoriteCitiesGateway = favoriteCitiesPreferences,
                     ),
                 )
                 WeatherScreen(
