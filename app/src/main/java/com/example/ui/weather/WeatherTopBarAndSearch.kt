@@ -29,6 +29,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
@@ -62,11 +64,17 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.catalog.ImgwStationCatalog
 import com.example.domain.model.AppLanguage
+import com.example.domain.model.FavoriteCityAlert
 import com.example.domain.model.GeoLocation
+import com.example.domain.model.WeatherWarning
+import com.example.presentation.AlertsUiState
 import com.example.presentation.GpsUiState
 import com.example.presentation.SearchUiState
+import com.example.presentation.WeatherHubTab
 import com.example.ui.theme.SkyPalette
 import com.example.ui.theme.SunAmber
+import com.example.ui.theme.WarningLevel2Accent
+import com.example.ui.theme.WarningLevel3Accent
 import java.util.Locale
 import kotlin.math.abs
 
@@ -78,16 +86,29 @@ import kotlin.math.abs
 @Composable
 fun WeatherSearchHeader(
     selectedLanguage: AppLanguage,
+    selectedLocation: GeoLocation = GeoLocation.WARSAW,
+    isSelectedFavorite: Boolean = false,
     searchState: SearchUiState,
     gpsState: GpsUiState,
     favoriteCities: List<GeoLocation> = emptyList(),
+    alertsState: AlertsUiState = AlertsUiState(),
+    selectedWarnings: List<WeatherWarning> = emptyList(),
+    otherFavoriteAlerts: List<FavoriteCityAlert> = emptyList(),
     isRefreshing: Boolean,
     palette: SkyPalette,
     onLanguageSelected: (AppLanguage) -> Unit,
     onQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onSelectLocation: (GeoLocation) -> Unit,
+    onSelectFavorite: (GeoLocation) -> Unit = onSelectLocation,
     onToggleFavorite: (GeoLocation) -> Unit = {},
+    onRemoveFavorite: (GeoLocation) -> Unit = {},
+    onToggleBannerAlerts: (Boolean) -> Unit = {},
+    onToggleNotificationAlerts: (Boolean) -> Unit = {},
+    onToggleCheckFavoriteAlerts: (Boolean) -> Unit = {},
+    onMinAlertLevelChanged: (Int) -> Unit = {},
+    onCheckAlertsNow: () -> Unit = {},
+    onOpenAppSettings: () -> Unit = {},
     onGpsClick: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onRefreshClick: () -> Unit,
@@ -95,16 +116,22 @@ fun WeatherSearchHeader(
 ) {
     val focusManager = LocalFocusManager.current
     var languageBarExpanded by rememberSaveable { mutableStateOf(false) }
+    var hubExpanded by rememberSaveable { mutableStateOf(false) }
+    var activeHubTab by rememberSaveable { mutableStateOf(WeatherHubTab.FAVORITES) }
+
+    val relevantAlertsCount = selectedWarnings.size + otherFavoriteAlerts.sumOf { it.warnings.size }
+    val hasHighAlert = selectedWarnings.any { it.level >= 3 } ||
+        otherFavoriteAlerts.any { it.maxLevel >= 3 }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Row 1: Brand name + Language Selector + GPS + Refresh
+        // Row 1: Brand name + Aggregated Favorites & Alert Settings Hub + Language + GPS + Refresh
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
                 text = appString(R.string.app_name),
@@ -114,10 +141,82 @@ fun WeatherSearchHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 4.dp),
+                    .padding(start = 2.dp),
             )
 
-            // Display language switcher pill (toggles inline glass language bar)
+            // Aggregated Favorites + IMGW Alert Settings Hub icon (48.dp touch target)
+            val hubCd = appString(R.string.hub_button_cd)
+            val alertBadgeColor = if (hasHighAlert) WarningLevel3Accent else WarningLevel2Accent
+            Surface(
+                shape = CircleShape,
+                color = if (hubExpanded) palette.cardHighlight else palette.cardContainer,
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = when {
+                        hubExpanded -> palette.accent.copy(alpha = 0.80f)
+                        relevantAlertsCount > 0 -> alertBadgeColor.copy(alpha = 0.78f)
+                        else -> palette.cardBorder
+                    },
+                ),
+            ) {
+                IconButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        languageBarExpanded = false
+                        if (!hubExpanded && relevantAlertsCount > 0) {
+                            activeHubTab = WeatherHubTab.ALERTS
+                        }
+                        hubExpanded = !hubExpanded
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics { contentDescription = hubCd }
+                        .testTag("favorites_alerts_hub_button"),
+                ) {
+                    Box(
+                        modifier = Modifier.size(30.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (relevantAlertsCount > 0) {
+                                Icons.Rounded.NotificationsActive
+                            } else {
+                                Icons.Rounded.Notifications
+                            },
+                            contentDescription = null,
+                            tint = if (relevantAlertsCount > 0) alertBadgeColor else Color.White,
+                            modifier = Modifier.size(21.dp),
+                        )
+
+                        if (relevantAlertsCount > 0) {
+                            Surface(
+                                shape = CircleShape,
+                                color = alertBadgeColor,
+                                modifier = Modifier.align(Alignment.TopEnd),
+                            ) {
+                                Text(
+                                    text = if (relevantAlertsCount > 9) "9+" else "$relevantAlertsCount",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF0A1424),
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                )
+                            }
+                        } else {
+                            // Miniature Star accent signifying aggregated Favorites + Alerts Hub
+                            Icon(
+                                imageVector = Icons.Rounded.Star,
+                                contentDescription = null,
+                                tint = SunAmber,
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .align(Alignment.BottomEnd),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Compact display language switcher pill (toggles inline glass language bar)
             val selectorCd = appString(R.string.language_selector_cd)
             Surface(
                 modifier = Modifier
@@ -132,19 +231,20 @@ fun WeatherSearchHeader(
                 ),
                 onClick = {
                     focusManager.clearFocus()
+                    hubExpanded = false
                     languageBarExpanded = !languageBarExpanded
                 },
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Translate,
                         contentDescription = null,
                         tint = palette.accent,
-                        modifier = Modifier.size(17.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                     Text(
                         text = selectedLanguage.shortTag,
@@ -159,7 +259,7 @@ fun WeatherSearchHeader(
                         },
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.78f),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                 }
             }
@@ -174,6 +274,7 @@ fun WeatherSearchHeader(
                     onClick = {
                         focusManager.clearFocus()
                         languageBarExpanded = false
+                        hubExpanded = false
                         onGpsClick()
                     },
                     modifier = Modifier
@@ -207,6 +308,7 @@ fun WeatherSearchHeader(
                     onClick = {
                         focusManager.clearFocus()
                         languageBarExpanded = false
+                        hubExpanded = false
                         onRefreshClick()
                     },
                     modifier = Modifier
@@ -231,6 +333,37 @@ fun WeatherSearchHeader(
             }
         }
 
+        // Inline animated Favorites & IMGW Alert Settings Hub panel
+        AnimatedVisibility(
+            visible = hubExpanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            WeatherFavoritesAndAlertsHub(
+                activeTab = activeHubTab,
+                favoriteCities = favoriteCities,
+                selectedLocation = selectedLocation,
+                isSelectedFavorite = isSelectedFavorite,
+                alertsState = alertsState,
+                selectedWarnings = selectedWarnings,
+                otherFavoriteAlerts = otherFavoriteAlerts,
+                palette = palette,
+                onSelectTab = { activeHubTab = it },
+                onSelectFavorite = { city ->
+                    hubExpanded = false
+                    onSelectFavorite(city)
+                },
+                onToggleCurrentFavorite = { onToggleFavorite(selectedLocation) },
+                onRemoveFavorite = onRemoveFavorite,
+                onToggleBannerAlerts = onToggleBannerAlerts,
+                onToggleNotificationAlerts = onToggleNotificationAlerts,
+                onToggleCheckFavoriteAlerts = onToggleCheckFavoriteAlerts,
+                onMinAlertLevelChanged = onMinAlertLevelChanged,
+                onCheckAlertsNow = onCheckAlertsNow,
+                onOpenAppSettings = onOpenAppSettings,
+            )
+        }
+
         // Inline animated language selector bar (no PopupWindow / BLASTBufferQueue teardown)
         AnimatedVisibility(
             visible = languageBarExpanded,
@@ -252,6 +385,7 @@ fun WeatherSearchHeader(
             value = searchState.query,
             onValueChange = {
                 languageBarExpanded = false
+                hubExpanded = false
                 onQueryChange(it)
             },
             modifier = Modifier

@@ -173,3 +173,79 @@ fun ImgwWarningBannerCard(
         }
     }
 }
+
+/**
+ * Compact banner notifying the user about active IMGW warnings affecting their pinned Polish
+ * favorite cities (other than the currently viewed city), with 1-tap navigation to each city.
+ */
+@Composable
+fun FavoriteCitiesAlertBanner(
+    favoriteAlerts: List<com.example.domain.model.FavoriteCityAlert>,
+    onSelectCity: (com.example.domain.model.GeoLocation) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (favoriteAlerts.isEmpty()) return
+
+    val maxLevel = favoriteAlerts.maxOfOrNull { it.maxLevel } ?: 1
+    val (bgColor, borderColor, accentColor) = when (maxLevel) {
+        3 -> Triple(WarningLevel3Bg, WarningLevel3Border, WarningLevel3Accent)
+        2 -> Triple(WarningLevel2Bg, WarningLevel2Border, WarningLevel2Accent)
+        else -> Triple(WarningLevel1Bg, WarningLevel1Border, WarningLevel1Accent)
+    }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("favorite_cities_alert_banner"),
+        shape = RoundedCornerShape(20.dp),
+        color = bgColor.copy(alpha = 0.86f),
+        border = BorderStroke(1.2.dp, borderColor.copy(alpha = 0.80f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.WarningAmber,
+                    contentDescription = appString(R.string.warning_icon_cd),
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = appString(R.string.favorite_alerts_banner_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = accentColor,
+                )
+            }
+
+            favoriteAlerts.forEach { entry ->
+                val topWarning = entry.warnings.maxByOrNull { it.level } ?: return@forEach
+                Surface(
+                    onClick = { onSelectCity(entry.city) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.10f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("favorite_alert_jump_${entry.city.name.lowercase()}"),
+                ) {
+                    Text(
+                        text = appString(
+                            R.string.favorite_alerts_banner_item,
+                            entry.city.name,
+                            topWarning.level,
+                            topWarning.eventName,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
+    }
+}

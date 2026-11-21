@@ -2,13 +2,20 @@ package com.example.domain.repository
 
 import com.example.domain.model.GeoLocation
 import com.example.domain.model.HybridWeatherBundle
+import com.example.domain.model.WeatherWarning
 
 /**
- * Contract for hybrid weather data retrieval (IMGW-PIB for Poland + Open-Meteo worldwide) and global city geocoding.
+ * Contract for hybrid weather data retrieval (IMGW-PIB for Poland + Open-Meteo worldwide),
+ * IMGW active warning checks, and global city geocoding.
  */
 interface WeatherRepository {
     suspend fun fetchHybridWeather(location: GeoLocation): HybridWeatherBundle
     suspend fun searchLocations(query: String, languageCode: String = "pl"): Result<List<GeoLocation>>
+    suspend fun fetchAllActiveImgwWarnings(): Result<List<WeatherWarning>>
+    fun filterWarningsForLocation(
+        warnings: List<WeatherWarning>,
+        location: GeoLocation,
+    ): List<WeatherWarning>
 }
 
 /**

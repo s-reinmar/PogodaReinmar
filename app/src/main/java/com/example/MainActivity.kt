@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.location.AndroidLocationProvider
+import com.example.data.notifications.AndroidImgwAlertNotifier
+import com.example.data.preferences.DataStoreAlertPreferences
 import com.example.data.preferences.DataStoreFavoriteCitiesPreferences
 import com.example.data.preferences.DataStoreLanguagePreferences
 import com.example.data.repository.HybridWeatherRepositoryImpl
@@ -21,6 +23,8 @@ class MainActivity : ComponentActivity() {
     private val locationProvider by lazy { AndroidLocationProvider(applicationContext) }
     private val languagePreferences by lazy { DataStoreLanguagePreferences(applicationContext) }
     private val favoriteCitiesPreferences by lazy { DataStoreFavoriteCitiesPreferences(applicationContext) }
+    private val alertPreferences by lazy { DataStoreAlertPreferences(applicationContext) }
+    private val alertNotifier by lazy { AndroidImgwAlertNotifier(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,11 +40,14 @@ class MainActivity : ComponentActivity() {
                         locationGateway = locationProvider,
                         languagePreferences = languagePreferences,
                         favoriteCitiesGateway = favoriteCitiesPreferences,
+                        alertPreferencesGateway = alertPreferences,
+                        alertNotifier = alertNotifier,
                     ),
                 )
                 WeatherScreen(
                     viewModel = weatherViewModel,
                     hasLocationPermission = locationProvider::hasLocationPermission,
+                    hasNotificationPermission = alertNotifier::hasNotificationPermission,
                 )
             }
         }

@@ -2,6 +2,8 @@ package com.example.ui.weather
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +69,7 @@ import com.example.ui.theme.SkyPalettes
 fun WeatherScreen(
     viewModel: WeatherViewModel,
     hasLocationPermission: () -> Boolean,
+    hasNotificationPermission: () -> Boolean = { true },
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,6 +92,12 @@ fun WeatherScreen(
         } else {
             viewModel.onPermissionDeniedOnGpsButton()
         }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onNotificationPermissionResult(granted)
     }
 
     LaunchedEffect(Unit) {
@@ -117,6 +126,38 @@ fun WeatherScreen(
         onSelectFavorite = viewModel::onSelectFavorite,
         onToggleFavorite = viewModel::onToggleFavorite,
         onRemoveFavorite = viewModel::onRemoveFavorite,
+        onToggleBannerAlerts = viewModel::onToggleBannerAlerts,
+        onToggleNotificationAlerts = { enabled ->
+            if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission()) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                viewModel.onToggleNotificationAlerts(enabled)
+            }
+        },
+        onToggleCheckFavoriteAlerts = viewModel::onToggleCheckFavoriteAlerts,
+        onMinAlertLevelChanged = viewModel::onMinAlertLevelChanged,
+        onCheckAlertsNow = {
+            if (uiState.alerts.settings.notificationsEnabled &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !hasNotificationPermission()
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                viewModel.onCheckImgwAlertsNow(forceNotifyIfActive = true)
+            }
+        },
+        onOpenAppSettings = {
+            runCatching {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+            }
+        },
         onGpsClick = {
             if (hasLocationPermission()) {
                 viewModel.refreshGpsLocation()
@@ -156,6 +197,12 @@ fun WeatherScreenContent(
     onSelectFavorite: (GeoLocation) -> Unit = {},
     onToggleFavorite: (GeoLocation) -> Unit = {},
     onRemoveFavorite: (GeoLocation) -> Unit = {},
+    onToggleBannerAlerts: (Boolean) -> Unit = {},
+    onToggleNotificationAlerts: (Boolean) -> Unit = {},
+    onToggleCheckFavoriteAlerts: (Boolean) -> Unit = {},
+    onMinAlertLevelChanged: (Int) -> Unit = {},
+    onCheckAlertsNow: () -> Unit = {},
+    onOpenAppSettings: () -> Unit = {},
     onGpsClick: () -> Unit,
     onOpenLocationSettings: () -> Unit = {},
     onRefreshClick: () -> Unit,
@@ -196,33 +243,48 @@ fun WeatherScreenContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    // Brand + language switcher + search bar + GPS + manual refresh header
+                    // Brand + aggregated Favorites & Alerts Hub + language + search + GPS + refresh
                     item(key = "search_header") {
                         WeatherSearchHeader(
                             selectedLanguage = uiState.selectedLanguage,
+                            selectedLocation = uiState.selectedLocation,
+                            isSelectedFavorite = uiState.isSelectedLocationFavorite,
                             searchState = uiState.search,
                             gpsState = uiState.gps,
                             favoriteCities = uiState.favoriteCities,
+                            alertsState = uiState.alerts,
+                            selectedWarnings = uiState.visibleSelectedLocationWarnings,
+                            otherFavoriteAlerts = uiState.otherFavoriteCityAlerts,
                             isRefreshing = uiState.isRefreshing,
                             palette = palette,
                             onLanguageSelected = onLanguageSelected,
                             onQueryChange = onQueryChange,
                             onClearSearch = onClearSearch,
                             onSelectLocation = onSelectLocation,
+                            onSelectFavorite = onSelectFavorite,
                             onToggleFavorite = onToggleFavorite,
+                            onRemoveFavorite = onRemoveFavorite,
+                            onToggleBannerAlerts = onToggleBannerAlerts,
+                            onToggleNotificationAlerts = onToggleNotificationAlerts,
+                            onToggleCheckFavoriteAlerts = onToggleCheckFavoriteAlerts,
+                            onMinAlertLevelChanged = onMinAlertLevelChanged,
+                            onCheckAlertsNow = onCheckAlertsNow,
+                            onOpenAppSettings = onOpenAppSettings,
                             onGpsClick = onGpsClick,
                             onOpenLocationSettings = onOpenLocationSettings,
                             onRefreshClick = onRefreshClick,
                         )
                     }
 
-                    // Quick-switch Favorites bar (hidden while search dropdown is open)
-                    if (!uiState.search.isDropdownOpen) {
+                    // Quick-switch Favorites bar (shown when favorites exist & search dropdown closed)
+                    if (!uiState.search.isDropdownOpen && uiState.favoriteCities.isNotEmpty()) {
                         item(key = "favorites_bar") {
                             WeatherFavoritesBar(
                                 favoriteCities = uiState.favoriteCities,
                                 selectedLocation = uiState.selectedLocation,
                                 isSelectedFavorite = uiState.isSelectedLocationFavorite,
+                                favoriteCityAlerts = uiState.alerts.favoriteCityAlerts,
+                                minAlertLevel = uiState.alerts.settings.minSeverityLevel,
                                 palette = palette,
                                 onSelectFavorite = onSelectFavorite,
                                 onToggleCurrentFavorite = {
@@ -253,13 +315,26 @@ fun WeatherScreenContent(
                         is WeatherContentState.Success -> {
                             val bundle = content.bundle
 
-                            // 1. IMGW Meteorological Warning Banner(s) at the very top when active
-                            if (bundle.warnings.isNotEmpty()) {
-                                items(
-                                    items = bundle.warnings,
-                                    key = { "warning_${it.id}" },
-                                ) { warning ->
-                                    ImgwWarningBannerCard(warning = warning)
+                            // 1. IMGW Meteorological Warning Banner(s) for active location & favorites
+                            if (uiState.alerts.settings.bannerEnabled) {
+                                val visibleWarnings = uiState.visibleSelectedLocationWarnings
+                                if (visibleWarnings.isNotEmpty()) {
+                                    items(
+                                        items = visibleWarnings,
+                                        key = { "warning_${it.id}" },
+                                    ) { warning ->
+                                        ImgwWarningBannerCard(warning = warning)
+                                    }
+                                }
+
+                                val otherFavAlerts = uiState.otherFavoriteCityAlerts
+                                if (otherFavAlerts.isNotEmpty()) {
+                                    item(key = "favorite_cities_alerts_banner") {
+                                        FavoriteCitiesAlertBanner(
+                                            favoriteAlerts = otherFavAlerts,
+                                            onSelectCity = onSelectFavorite,
+                                        )
+                                    }
                                 }
                             }
 

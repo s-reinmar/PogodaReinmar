@@ -3,10 +3,15 @@ package com.example.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.notifications.AlertNotificationGateway
+import com.example.data.preferences.AlertPreferencesGateway
 import com.example.data.preferences.FavoriteCitiesGateway
 import com.example.data.preferences.LanguagePreferencesGateway
 import com.example.domain.model.AppLanguage
+import com.example.domain.model.FavoriteCityAlert
 import com.example.domain.model.GeoLocation
+import com.example.domain.model.WeatherAlertSettings
+import com.example.domain.model.WeatherWarning
 import com.example.domain.repository.LocationGateway
 import com.example.domain.repository.LocationLookupResult
 import com.example.domain.repository.WeatherRepository
@@ -22,6 +27,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
@@ -38,6 +45,8 @@ class WeatherViewModel(
     private val locationGateway: LocationGateway,
     private val languagePreferences: LanguagePreferencesGateway,
     private val favoriteCitiesGateway: FavoriteCitiesGateway,
+    private val alertPreferencesGateway: AlertPreferencesGateway,
+    private val alertNotifier: AlertNotificationGateway,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WeatherUiState())
@@ -48,10 +57,14 @@ class WeatherViewModel(
     private var gpsJob: Job? = null
     private var searchJob: Job? = null
     private var relocalizeJob: Job? = null
+    private var alertsCheckJob: Job? = null
+    private var latestAllImgwWarnings: List<WeatherWarning> = emptyList()
+    private var notifiedWarningIdsCache: Set<String> = emptySet()
 
     init {
         observeSavedLanguage()
         observeFavoriteCities()
+        observeAlertSettings()
         observeDebouncedSearch()
     }
 
@@ -60,8 +73,36 @@ class WeatherViewModel(
             .distinctUntilChanged()
             .onEach { favorites ->
                 _uiState.update { state ->
-                    state.copy(favoriteCities = favorites)
+                    state.copy(
+                        favoriteCities = favorites,
+                        alerts = state.alerts.copy(
+                            favoriteCityAlerts = computeFavoriteCityAlerts(
+                                warnings = latestAllImgwWarnings,
+                                favorites = favorites,
+                            ),
+                        ),
+                    )
                 }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeAlertSettings() {
+        alertPreferencesGateway.settings
+            .distinctUntilChanged()
+            .onEach { settings ->
+                _uiState.update { state ->
+                    state.copy(
+                        alerts = state.alerts.copy(settings = settings),
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+
+        alertPreferencesGateway.notifiedWarningIds
+            .distinctUntilChanged()
+            .onEach { ids ->
+                notifiedWarningIdsCache = ids
             }
             .launchIn(viewModelScope)
     }
@@ -304,6 +345,197 @@ class WeatherViewModel(
         loadWeatherForLocation(currentLoc, showFullShimmer = !hasExistingSuccess)
     }
 
+    fun onToggleBannerAlerts(enabled: Boolean) {
+        viewModelScope.launch {
+            alertPreferencesGateway.setBannerEnabled(enabled)
+        }
+    }
+
+    fun onToggleNotificationAlerts(enabled: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                alerts = state.alerts.copy(
+                    notificationPermissionDenied = false,
+                    lastNotificationDelivered = false,
+                ),
+            )
+        }
+        viewModelScope.launch {
+            alertPreferencesGateway.setNotificationsEnabled(enabled)
+        }
+    }
+
+    fun onNotificationPermissionResult(granted: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                alerts = state.alerts.copy(notificationPermissionDenied = !granted),
+            )
+        }
+        viewModelScope.launch {
+            alertPreferencesGateway.setNotificationsEnabled(granted)
+        }
+        if (granted) {
+            onCheckImgwAlertsNow(forceNotifyIfActive = true)
+        }
+    }
+
+    fun onMinAlertLevelChanged(level: Int) {
+        viewModelScope.launch {
+            alertPreferencesGateway.setMinSeverityLevel(level)
+        }
+    }
+
+    fun onToggleCheckFavoriteAlerts(enabled: Boolean) {
+        viewModelScope.launch {
+            alertPreferencesGateway.setCheckFavoriteCities(enabled)
+        }
+        if (enabled && latestAllImgwWarnings.isEmpty()) {
+            onCheckImgwAlertsNow(forceNotifyIfActive = false)
+        }
+    }
+
+    /**
+     * Queries the live IMGW-PIB warnings feed (`/api/data/warningsmeteo`) for the current city
+     * and monitored favorite Polish cities, updates banners/badges, and posts an Android system
+     * notification when enabled and warnings match the user's severity threshold.
+     */
+    fun onCheckImgwAlertsNow(forceNotifyIfActive: Boolean = true) {
+        alertsCheckJob?.cancel()
+        alertsCheckJob = viewModelScope.launch {
+            _uiState.update { state ->
+                state.copy(
+                    alerts = state.alerts.copy(
+                        isChecking = true,
+                        checkError = false,
+                        lastNotificationDelivered = false,
+                    ),
+                )
+            }
+
+            val result = weatherRepository.fetchAllActiveImgwWarnings()
+            val timestamp = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+            result.fold(
+                onSuccess = { allWarnings ->
+                    latestAllImgwWarnings = allWarnings
+                    val stateSnapshot = _uiState.value
+                    val favAlerts = computeFavoriteCityAlerts(
+                        warnings = allWarnings,
+                        favorites = stateSnapshot.favoriteCities,
+                    )
+                    val selectedWarnings = weatherRepository.filterWarningsForLocation(
+                        warnings = allWarnings,
+                        location = stateSnapshot.selectedLocation,
+                    )
+
+                    _uiState.update { state ->
+                        val updatedContent = when (val content = state.contentState) {
+                            is WeatherContentState.Success -> content.copy(
+                                bundle = content.bundle.copy(warnings = selectedWarnings),
+                            )
+                            else -> content
+                        }
+                        state.copy(
+                            contentState = updatedContent,
+                            alerts = state.alerts.copy(
+                                isChecking = false,
+                                lastCheckedTimeLabel = timestamp,
+                                checkError = false,
+                                allPolandWarningsCount = allWarnings.size,
+                                favoriteCityAlerts = favAlerts,
+                            ),
+                        )
+                    }
+
+                    evaluateAndDeliverNotifications(
+                        selectedLocation = stateSnapshot.selectedLocation,
+                        selectedWarnings = selectedWarnings,
+                        favoriteAlerts = favAlerts,
+                        settings = _uiState.value.alerts.settings,
+                        forceNotify = forceNotifyIfActive,
+                    )
+                },
+                onFailure = {
+                    _uiState.update { state ->
+                        state.copy(
+                            alerts = state.alerts.copy(
+                                isChecking = false,
+                                lastCheckedTimeLabel = timestamp,
+                                checkError = true,
+                            ),
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun computeFavoriteCityAlerts(
+        warnings: List<WeatherWarning>,
+        favorites: List<GeoLocation>,
+    ): List<FavoriteCityAlert> {
+        if (warnings.isEmpty() || favorites.isEmpty()) return emptyList()
+        return favorites.mapNotNull { city ->
+            val matched = weatherRepository.filterWarningsForLocation(warnings, city)
+            if (matched.isEmpty()) null else FavoriteCityAlert(city = city, warnings = matched)
+        }
+    }
+
+    private suspend fun evaluateAndDeliverNotifications(
+        selectedLocation: GeoLocation,
+        selectedWarnings: List<WeatherWarning>,
+        favoriteAlerts: List<FavoriteCityAlert>,
+        settings: WeatherAlertSettings,
+        forceNotify: Boolean,
+    ) {
+        if (!settings.notificationsEnabled || !alertNotifier.hasNotificationPermission()) {
+            return
+        }
+
+        val minLevel = settings.minSeverityLevel
+        val candidatePairs = buildList {
+            selectedWarnings
+                .filter { it.level >= minLevel }
+                .forEach { add(selectedLocation.name to it) }
+            if (settings.checkFavoriteCities) {
+                favoriteAlerts.forEach { fav ->
+                    if (!fav.city.matchesLocation(selectedLocation)) {
+                        fav.warnings
+                            .filter { it.level >= minLevel }
+                            .forEach { add(fav.city.name to it) }
+                    }
+                }
+            }
+        }.distinctBy { (_, warning) -> warning.id }
+            .sortedByDescending { (_, warning) -> warning.level }
+
+        if (candidatePairs.isEmpty()) return
+
+        val toNotify = if (forceNotify) {
+            candidatePairs
+        } else {
+            candidatePairs.filter { (_, warning) -> warning.id !in notifiedWarningIdsCache }
+        }
+        if (toNotify.isEmpty()) return
+
+        val (topCity, topWarning) = toNotify.first()
+        val delivered = alertNotifier.postImgwAlertNotification(
+            cityName = topCity,
+            warning = topWarning,
+            totalActiveCount = toNotify.size,
+        )
+        if (delivered) {
+            val newIds = toNotify.map { it.second.id }.toSet()
+            notifiedWarningIdsCache = notifiedWarningIdsCache + newIds
+            alertPreferencesGateway.markWarningsNotified(newIds)
+            _uiState.update { state ->
+                state.copy(
+                    alerts = state.alerts.copy(lastNotificationDelivered = true),
+                )
+            }
+        }
+    }
+
     private fun fallbackToWarsaw(showNotice: Boolean) {
         val localizedWarsaw = _uiState.value.selectedLanguage.localizedWarsaw()
         _uiState.update { state ->
@@ -341,6 +573,9 @@ class WeatherViewModel(
                     isRefreshing = false,
                 )
             }
+
+            // Silently sync IMGW alerts across selected & favorite Polish cities and notify on new alerts
+            onCheckImgwAlertsNow(forceNotifyIfActive = false)
         }
     }
 
@@ -411,6 +646,8 @@ class WeatherViewModel(
         private val locationGateway: LocationGateway,
         private val languagePreferences: LanguagePreferencesGateway,
         private val favoriteCitiesGateway: FavoriteCitiesGateway,
+        private val alertPreferencesGateway: AlertPreferencesGateway,
+        private val alertNotifier: AlertNotificationGateway,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -422,6 +659,8 @@ class WeatherViewModel(
                 locationGateway = locationGateway,
                 languagePreferences = languagePreferences,
                 favoriteCitiesGateway = favoriteCitiesGateway,
+                alertPreferencesGateway = alertPreferencesGateway,
+                alertNotifier = alertNotifier,
             ) as T
         }
     }

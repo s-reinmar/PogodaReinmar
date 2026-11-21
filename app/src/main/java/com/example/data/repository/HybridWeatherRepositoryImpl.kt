@@ -211,6 +211,33 @@ class HybridWeatherRepositoryImpl(
             }
         }
 
+    override suspend fun fetchAllActiveImgwWarnings(): Result<List<WeatherWarning>> =
+        withContext(ioDispatcher) {
+            safeApiCall { fetchAndParseImgwWarnings() }
+        }
+
+    override fun filterWarningsForLocation(
+        warnings: List<WeatherWarning>,
+        location: GeoLocation,
+    ): List<WeatherWarning> {
+        if (warnings.isEmpty() || !ImgwStationCatalog.isPolishLocation(location)) {
+            return emptyList()
+        }
+        val nearestCatalogStation = ImgwStationCatalog.findNearestCatalogStation(
+            location.latitude,
+            location.longitude,
+        ).station
+        val voivodeshipTeryt = ImgwStationCatalog.resolveVoivodeshipTeryt(
+            explicitTeryt = location.terytVoivodeshipCode,
+            admin1 = location.admin1,
+            fallbackStation = nearestCatalogStation,
+        )
+        return filterWarningsForRegion(
+            warnings = warnings,
+            voivodeshipTeryt = voivodeshipTeryt,
+        )
+    }
+
     private suspend fun fetchAndParseImgwWarnings(): List<WeatherWarning> {
         val rawBody = imgwApi.getWarningsRaw().use { it.string() }.trim()
         if (rawBody.isBlank()) return emptyList()

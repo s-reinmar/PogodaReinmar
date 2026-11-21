@@ -15,12 +15,37 @@
     <string name="search_source_imgw">IMGW</string>
     <string name="search_source_open_meteo">Open-Meteo</string>
 
-    <!-- Favorites -->
+    <!-- Favorites & Alerts Hub -->
     <string name="favorites_section_label">Favorites</string>
     <string name="favorites_add_current">Pin %1$s to Favorites</string>
     <string name="favorite_add_cd">Add %1$s to favorites</string>
     <string name="favorite_remove_cd">Remove %1$s from favorites</string>
     <string name="favorite_chip_select_cd">Switch weather to %1$s</string>
+    <string name="hub_button_cd">Open favorites and IMGW alert settings</string>
+    <string name="hub_tab_favorites">Favorites</string>
+    <string name="hub_tab_alerts">IMGW Alerts</string>
+    <string name="hub_favorites_empty">No pinned cities yet. Pin the current location or star any city in search results.</string>
+    <string name="hub_alerts_status_none">No active IMGW alerts for your monitored cities.</string>
+    <string name="hub_alerts_status_active">Active IMGW alerts: %1$d (across Poland: %2$d)</string>
+    <string name="hub_alerts_status_poland_other">Active IMGW warnings in Poland: %1$d (none for your selected cities).</string>
+    <string name="hub_alerts_check_error">Could not reach the IMGW warnings feed.</string>
+    <string name="hub_alerts_last_checked">Checked: %1$s</string>
+    <string name="hub_alerts_check_now">Check IMGW alerts</string>
+    <string name="hub_alerts_checking">Checking IMGW…</string>
+    <string name="hub_alerts_notified_toast">System alert notification sent.</string>
+    <string name="hub_alert_banner_toggle">On-screen warning banner</string>
+    <string name="hub_alert_notifications_toggle">System notifications</string>
+    <string name="hub_alert_favorites_toggle">Monitor favorite cities (PL)</string>
+    <string name="hub_alert_min_level_label">Minimum severity level</string>
+    <string name="hub_alert_level_option">Level %1$d+</string>
+    <string name="hub_alert_level_3_only">Level 3</string>
+    <string name="hub_alert_permission_denied">Notification permission denied. Enable it in app settings.</string>
+    <string name="favorite_alerts_banner_title">Active IMGW alerts in favorite cities</string>
+    <string name="favorite_alerts_banner_item">%1$s • Lvl %2$d: %3$s</string>
+    <string name="notification_channel_imgw_name">IMGW-PIB Weather Alerts</string>
+    <string name="notification_channel_imgw_desc">Notifications for active Polish meteorological warnings from IMGW-PIB.</string>
+    <string name="notification_imgw_title">IMGW Lvl %1$d • %2$s: %3$s</string>
+    <string name="notification_imgw_multi_summary">Valid: %1$s – %2$s (+%3$d more)</string>
 
     <!-- Station & Source Badges -->
     <string name="imgw_station_badge">Station: IMGW %1$s (%2$s km, %3$s:00)</string>

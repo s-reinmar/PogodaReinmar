@@ -219,3 +219,24 @@ data class HybridWeatherBundle(
     val hasAnyData: Boolean
         get() = imgwMeasurement != null || openMeteo != null
 }
+
+/**
+ * Persisted user preferences for IMGW-PIB meteorological alerts & notifications.
+ */
+data class WeatherAlertSettings(
+    val notificationsEnabled: Boolean = true,
+    val bannerEnabled: Boolean = true,
+    val minSeverityLevel: Int = 1,
+    val checkFavoriteCities: Boolean = true,
+)
+
+/**
+ * Active IMGW warnings matched to a specific favorite Polish city.
+ */
+data class FavoriteCityAlert(
+    val city: GeoLocation,
+    val warnings: List<WeatherWarning>,
+) {
+    val maxLevel: Int
+        get() = warnings.maxOfOrNull { it.level } ?: 1
+}

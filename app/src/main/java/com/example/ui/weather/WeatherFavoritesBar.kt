@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,89 +39,41 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.domain.model.FavoriteCityAlert
 import com.example.domain.model.GeoLocation
 import com.example.ui.theme.SkyPalette
 import com.example.ui.theme.SunAmber
+import com.example.ui.theme.WarningLevel1Accent
+import com.example.ui.theme.WarningLevel2Accent
+import com.example.ui.theme.WarningLevel3Accent
 import java.util.Locale
 
 /**
  * Horizontal quick-switcher bar for user-pinned favorite cities persisted in Jetpack DataStore.
- * Shows an inviting 1-tap pin pill when empty and scrollable city switcher chips once populated.
+ * Displayed when at least one favorite city is pinned; displays a live warning dot on any Polish
+ * favorite city that currently has an active IMGW alert.
  */
 @Composable
 fun WeatherFavoritesBar(
     favoriteCities: List<GeoLocation>,
     selectedLocation: GeoLocation,
     isSelectedFavorite: Boolean,
+    favoriteCityAlerts: List<FavoriteCityAlert> = emptyList(),
+    minAlertLevel: Int = 1,
     palette: SkyPalette,
     onSelectFavorite: (GeoLocation) -> Unit,
     onToggleCurrentFavorite: () -> Unit,
     onRemoveFavorite: (GeoLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (favoriteCities.isEmpty()) return
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .testTag("favorites_bar"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (favoriteCities.isEmpty()) {
-            val pinLabel = appString(R.string.favorites_add_current, selectedLocation.name)
-            Surface(
-                onClick = onToggleCurrentFavorite,
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("favorites_empty_pin_button"),
-                shape = CircleShape,
-                color = palette.cardContainer,
-                border = BorderStroke(1.dp, palette.cardBorder),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.StarBorder,
-                        contentDescription = null,
-                        tint = SunAmber,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = pinLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(alpha = 0.90f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Star,
-                    contentDescription = null,
-                    tint = SunAmber,
-                    modifier = Modifier.size(14.dp),
-                )
-                Text(
-                    text = appString(R.string.favorites_section_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.78f),
-                )
-                Text(
-                    text = "• ${favoriteCities.size}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.56f),
-                )
-            }
-
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -135,9 +86,15 @@ fun WeatherFavoritesBar(
                     key = { it.stableId() },
                 ) { city ->
                     val isSelected = city.matchesLocation(selectedLocation)
+                    val activeAlertLevel = favoriteCityAlerts
+                        .firstOrNull { it.city.matchesLocation(city) }
+                        ?.warnings
+                        ?.filter { it.level >= minAlertLevel }
+                        ?.maxOfOrNull { it.level }
                     FavoriteCityChip(
                         city = city,
                         isSelected = isSelected,
+                        activeAlertLevel = activeAlertLevel,
                         palette = palette,
                         onSelect = { onSelectFavorite(city) },
                         onRemove = { onRemoveFavorite(city) },
@@ -183,7 +140,6 @@ fun WeatherFavoritesBar(
                     }
                 }
             }
-        }
     }
 }
 
@@ -191,11 +147,18 @@ fun WeatherFavoritesBar(
 private fun FavoriteCityChip(
     city: GeoLocation,
     isSelected: Boolean,
+    activeAlertLevel: Int?,
     palette: SkyPalette,
     onSelect: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val alertAccent = when (activeAlertLevel) {
+        3 -> WarningLevel3Accent
+        2 -> WarningLevel2Accent
+        1 -> WarningLevel1Accent
+        else -> null
+    }
     val containerColor by animateColorAsState(
         targetValue = if (isSelected) {
             palette.accent.copy(alpha = 0.26f)
@@ -206,10 +169,10 @@ private fun FavoriteCityChip(
         label = "favoriteChipContainer",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            palette.accent.copy(alpha = 0.85f)
-        } else {
-            palette.cardBorder
+        targetValue = when {
+            alertAccent != null -> alertAccent.copy(alpha = 0.78f)
+            isSelected -> palette.accent.copy(alpha = 0.85f)
+            else -> palette.cardBorder
         },
         animationSpec = spring(),
         label = "favoriteChipBorder",
@@ -247,7 +210,7 @@ private fun FavoriteCityChip(
                 Icon(
                     imageVector = Icons.Rounded.Star,
                     contentDescription = null,
-                    tint = if (isSelected) SunAmber else SunAmber.copy(alpha = 0.72f),
+                    tint = alertAccent ?: if (isSelected) SunAmber else SunAmber.copy(alpha = 0.72f),
                     modifier = Modifier.size(16.dp),
                 )
                 Text(

@@ -15,12 +15,37 @@
     <string name="search_source_imgw">IMGW</string>
     <string name="search_source_open_meteo">Open-Meteo</string>
 
-    <!-- Favorites -->
+    <!-- Favorites & Alerts Hub -->
     <string name="favorites_section_label">Ulubione</string>
     <string name="favorites_add_current">Dodaj %1$s do ulubionych</string>
     <string name="favorite_add_cd">Dodaj %1$s do ulubionych</string>
     <string name="favorite_remove_cd">Usuń %1$s z ulubionych</string>
     <string name="favorite_chip_select_cd">Przełącz pogodę na %1$s</string>
+    <string name="hub_button_cd">Otwórz panel ulubionych miast i ustawień alertów IMGW</string>
+    <string name="hub_tab_favorites">Ulubione</string>
+    <string name="hub_tab_alerts">Alerty IMGW</string>
+    <string name="hub_favorites_empty">Brak zapisanych miast. Dodaj bieżącą lokalizację lub oznacz miasto gwiazdką w wyszukiwarce.</string>
+    <string name="hub_alerts_status_none">Brak aktywnych alertów IMGW dla monitorowanych miast.</string>
+    <string name="hub_alerts_status_active">Aktywne alerty IMGW: %1$d (w całej Polsce: %2$d)</string>
+    <string name="hub_alerts_status_poland_other">W całej Polsce aktywnych ostrzeżeń IMGW: %1$d (brak dla wybranych miast).</string>
+    <string name="hub_alerts_check_error">Nie udało się pobrać alertów z serwera IMGW.</string>
+    <string name="hub_alerts_last_checked">Sprawdzono: %1$s</string>
+    <string name="hub_alerts_check_now">Sprawdź alerty IMGW</string>
+    <string name="hub_alerts_checking">Sprawdzanie IMGW…</string>
+    <string name="hub_alerts_notified_toast">Wysłano powiadomienie systemowe IMGW.</string>
+    <string name="hub_alert_banner_toggle">Baner ostrzeżeń na ekranie</string>
+    <string name="hub_alert_notifications_toggle">Powiadomienia systemowe</string>
+    <string name="hub_alert_favorites_toggle">Monitoruj ulubione miasta (PL)</string>
+    <string name="hub_alert_min_level_label">Minimalny stopień zagrożenia</string>
+    <string name="hub_alert_level_option">Stopień %1$d+</string>
+    <string name="hub_alert_level_3_only">Tylko 3</string>
+    <string name="hub_alert_permission_denied">Brak zgody na powiadomienia. Włącz je w ustawieniach aplikacji.</string>
+    <string name="favorite_alerts_banner_title">Aktywne alerty IMGW w ulubionych miastach</string>
+    <string name="favorite_alerts_banner_item">%1$s • St. %2$d: %3$s</string>
+    <string name="notification_channel_imgw_name">Alerty pogodowe IMGW-PIB</string>
+    <string name="notification_channel_imgw_desc">Powiadomienia o aktywnych ostrzeżeniach meteorologicznych z systemu IMGW-PIB.</string>
+    <string name="notification_imgw_title">IMGW St. %1$d • %2$s: %3$s</string>
+    <string name="notification_imgw_multi_summary">Obowiązuje: %1$s – %2$s (+%3$d inne)</string>
 
     <!-- Station & Source Badges -->
     <string name="imgw_station_badge">Pomiar: stacja IMGW %1$s (%2$s km, godz. %3$s:00)</string>
